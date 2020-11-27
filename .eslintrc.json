@@ -1,0 +1,10 @@
+{
+  "extends": "./node_modules/gts/",
+  "rules": {
+    "node/no-unpublished-import": "off"
+  },
+  "parserOptions": {
+    "ecmaVersion": 2020,
+    "sourceType": "module"
+  }
+}
