@@ -7,6 +7,9 @@ import {
   eat,
   equip,
   familiarWeight,
+  formatDateTime,
+  getCampground,
+  getFuel,
   getProperty,
   haveEffect,
   haveFamiliar,
@@ -19,25 +22,34 @@ import {
   myAdventures,
   myBuffedstat,
   myFamiliar,
+  myHp,
   myInebriety,
   myLocation,
+  myMaxhp,
   myMaxmp,
   myMp,
   myTurncount,
   print,
   putCloset,
+  restoreHp,
   restoreMp,
   setAutoAttack,
   setProperty,
   shopAmount,
   takeCloset,
   takeShop,
+  timeToString,
+  todayToString,
+  urlEncode,
   useFamiliar,
   visitUrl,
+  wait,
   weightAdjustment,
 } from 'kolmafia';
-import { $effect, $familiar, $familiars, $item, $items, $locations, $skill } from 'libram/src';
+import { $effect, $familiar, $familiars, $item, $items, $location, $locations, $skill } from 'libram/src';
+import { fillAsdonMartinTo } from './asdon';
 import { tryEnsureSong } from './mood';
+import { getSewersState, throughSewers } from './sewers';
 
 export function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(n, max));
@@ -66,6 +78,10 @@ export function getPropertyBoolean(name: string, default_: boolean | null = null
   return str === 'true';
 }
 
+export function setPropertyInt(name: string, value: number) {
+  setProperty(name, value);
+}
+
 export function setChoice(adv: number, choice: number) {
   setProperty(`choiceAdventure${adv}`, `${choice}`);
 }
@@ -86,7 +102,7 @@ export function cheapest(...items: Item[]) {
 }
 
 export function getItem(qty: number, item: Item, maxPrice: number) {
-  if (qty > 15) abort('bad get!');
+  if (qty * mallPrice(item) > 1000000) abort('bad get!');
 
   let remaining = qty - itemAmount(item);
   if (remaining <= 0) return;
@@ -107,17 +123,17 @@ export function getItem(qty: number, item: Item, maxPrice: number) {
   remaining -= getMall;
   if (remaining <= 0) return;
 
-  if (buy(remaining, item, maxPrice) < remaining) abort('Mall price too high for {it.name}.');
+  if (buy(remaining, item, maxPrice) < remaining) abort(`Mall price too high for ${item.name}.`);
 }
 
 const SAUSAGE_GOBLIN_GOAL = 14;
 export function maximizeCached(maximizeGoals: string[], forceEquip: Item[], banned: Item[] = []) {
-  banned = [...banned, ...$items`Pigsticker of Violence, porcelain porkpie hat`];
+  banned = [...banned, ...$items`Pigsticker of Violence, porcelain porkpie`];
 
   if (myInebriety() > inebrietyLimit()) {
     forceEquip = [...forceEquip, $item`Drunkula's wineglass`];
     maximizeGoals = [...maximizeGoals, '0.01 weapon damage'];
-  } else if (getPropertyInt('_sausageFights') < SAUSAGE_GOBLIN_GOAL) {
+  } else if (getPropertyInt('_sausageFights') < SAUSAGE_GOBLIN_GOAL && !forceEquip.includes($item`hobo code binder`)) {
     forceEquip = [...forceEquip, $item`Kramco Sausage-o-Matic™`];
   }
 
@@ -126,7 +142,7 @@ export function maximizeCached(maximizeGoals: string[], forceEquip: Item[], bann
     ...forceEquip.map(it => `equip ${it}`),
     ...banned.map(it => `-equip ${it}`),
   ].join(', ');
-  const objectiveChanged = getPropertyString('minehobo_lastObjective', '') === objective;
+  const objectiveChanged = getPropertyString('minehobo_lastObjective', '') !== objective;
 
   let oldStats = getPropertyString('minehobo_lastStats', '0,0,0')
     .split(',')
@@ -172,16 +188,28 @@ function exclude(haystack: Item[], needles: Item[]) {
 const freeRunSources = [
   ['_reflexHammerUsed', 3, $item`Lil' Doctor™ bag`],
   ['_kgbTranquilizerDartUses', 3, $item`Kremlin's Greatest Briefcase`],
-  ['_latteRefills', 3, $item`latte lovers member's mug`],
+  ['_latteRefillsUsed', 3, $item`latte lovers member's mug`],
   ['_snokebombUsed', 3, $skill`Snokebomb`],
 ];
+const freeRunItems = $items`Louder Than Bomb, tattered scrap of paper, GOTO, green smoke bomb`;
 let freeRunFamiliar = $familiar`none`;
 for (const testFam of $familiars`Pair of Stomping Boots, Frumious Bandersnatch`) {
   if (haveFamiliar(testFam)) freeRunFamiliar = testFam;
 }
 const turnOnlyItems = $items`mafia thumb ring`;
 export const usualDropItems = $items`lucky gold ring, Mr. Cheeng's spectacles, mafia thumb ring`;
-export function maximizeFreeRuns(primaryGoal: string, otherGoals: string[], forceEquip: Item[], banned: Item[] = []) {
+export function maximizeFreeRuns(
+  primaryGoal: string,
+  otherGoals: string[],
+  forceEquip: Item[],
+  banned: Item[] = [],
+  tryFreeRun = true
+) {
+  if (!tryFreeRun) {
+    maximizeCached([primaryGoal, ...otherGoals], forceEquip, banned);
+    return { familiarLocked: false, freeRun: false };
+  }
+
   if (getPropertyBoolean('_minehobo_freeRunFamiliarUsed', false) && freeRunFamiliar !== $familiar`none`) {
     maximizeCached(['familiar weight', ...otherGoals], exclude(forceEquip, turnOnlyItems), banned);
     useFamiliar(freeRunFamiliar);
@@ -192,8 +220,13 @@ export function maximizeFreeRuns(primaryGoal: string, otherGoals: string[], forc
     setProperty('_minehobo_freeRunFamiliarUsed', 'true');
   }
 
+  if (myInebriety() > inebrietyLimit()) {
+    maximizeCached([primaryGoal, ...otherGoals], forceEquip, banned);
+    return { familiarLocked: false, freeRun: false };
+  }
+
   const additionalEquip: Item[] = [];
-  let freeRun = false;
+  let limitedFreeRuns = false;
   for (const [pref, maxCount, itemOrSkill] of freeRunSources) {
     if (getPropertyInt(pref as string) < maxCount && has(itemOrSkill as Item | Skill)) {
       if (itemOrSkill instanceof Item) additionalEquip.push(itemOrSkill as Item);
@@ -201,28 +234,37 @@ export function maximizeFreeRuns(primaryGoal: string, otherGoals: string[], forc
       if (itemOrSkill === $item`latte lovers member's mug` && getPropertyBoolean('_latteBanishUsed')) {
         cliExecute(`latte refill cinnamon pumpkin ${getProperty('latteUnlocks').includes('ink') ? 'ink' : 'vanilla'}`);
       }
-      freeRun = true;
+      limitedFreeRuns = true;
       break;
     }
   }
-  if (freeRun) forceEquip = exclude(forceEquip, turnOnlyItems);
+  if (
+    getCampground()['Asdon Martin keyfob'] !== undefined &&
+    !getProperty('banishedMonsters').includes('Spring-Loaded Front Bumper')
+  ) {
+    if (getFuel() < 50) {
+      fillAsdonMartinTo(100);
+    }
+    limitedFreeRuns = true;
+  }
+  if (limitedFreeRuns) forceEquip = exclude(forceEquip, turnOnlyItems);
   maximizeCached([primaryGoal, ...otherGoals], forceEquip, banned);
-  return { familiarLocked: false, freeRun };
+  return { familiarLocked: false, freeRun: limitedFreeRuns || freeRunItems.some((it: Item) => itemAmount(it) > 0) };
 }
 
 function averagePrice(items: Item[]) {
   return items.reduce((s, it) => s + mallPrice(it), 0) / items.length;
 }
 
-function argmax(values: unknown[][]) {
+function argmax<T>(values: [T, number][]) {
   return values.reduce(([minValue, minScore], [value, score]) =>
-    (score as number) > (minScore as number) ? [value, score] : [minValue, minScore]
+    score > minScore ? [value, score] : [minValue, minScore]
   )[0];
 }
 
 // 5, 10, 15, 20, 25 +5/turn: 5.29, 4.52, 3.91, 3.42, 3.03
 const rotatingFamiliars: { [index: string]: { expected: number[]; drop: Item; pref: string } } = {
-  'Ambitious Turkey': {
+  'Fist Turkey': {
     expected: [3.91, 4.52, 4.52, 5.29, 5.29],
     drop: $item`Ambitious Turkey`,
     pref: '_turkeyBooze',
@@ -239,34 +281,34 @@ const rotatingFamiliars: { [index: string]: { expected: number[]; drop: Item; pr
   },
 };
 
-const GOAL_NONE = Symbol('none');
-const GOAL_PLUS_COMBAT = Symbol('+combat');
-const GOAL_MINUS_COMBAT = Symbol('-combat');
 const mimicDropValue = averagePrice($items`Polka Pop, BitterSweetTarts, Piddles`) / (6.29 * 0.95 + 1 * 0.05);
+export const GOAL_NONE = Symbol('none');
+export const GOAL_PLUS_COMBAT = Symbol('+combat');
+export const GOAL_MINUS_COMBAT = Symbol('-combat');
 export function pickFamiliar(location: Location, freeRun: boolean, goal = GOAL_NONE) {
-  let pickedFamiliar = null;
+  let pickedFamiliar: Familiar | null = null;
   if (freeRun) {
-    if (goal === GOAL_MINUS_COMBAT && familiarWeight($familiar`Disgeist`) >= 38) {
+    if (goal === GOAL_MINUS_COMBAT && myFamiliarWeight($familiar`Disgeist`) >= 38) {
       pickedFamiliar = $familiar`Disgeist`;
-    } else if (goal === GOAL_PLUS_COMBAT && familiarWeight($familiar`Jumpsuited Hound Dog`) >= 30) {
+    } else if (goal === GOAL_PLUS_COMBAT && myFamiliarWeight($familiar`Jumpsuited Hound Dog`) >= 30) {
       pickedFamiliar = $familiar`Jumpsuited Hound Dog`;
     } else if (
       !$locations`A Maze of Sewer Tunnels, Hobopolis Town Square`.includes(location) &&
       haveFamiliar($familiar`Space Jellyfish`)
     ) {
       pickedFamiliar = $familiar`Space Jellyfish`;
-    } else if (getPropertyInt('hipsterFights') < 7) {
+    } else if (getPropertyInt('_gothKidFights') < 7) {
       pickedFamiliar = $familiar`Artistic Goth Kid`;
     }
     // TODO: Could include LHM here, but difficult
   }
 
   if (pickedFamiliar === null) {
-    const mimicWeight = familiarWeight($familiar`Stocking Mimic`) + weightAdjustment();
-    const actionPercentage = 1 / 3 + (haveEffect($effect`Jingle Bells`) ? 0.1 : 0);
+    const mimicWeight = myFamiliarWeight($familiar`Stocking Mimic`);
+    const actionPercentage = 1 / 3 + (haveEffect($effect`Jingle Jangle Jingle`) ? 0.1 : 0);
     const mimicValue = mimicDropValue + ((mimicWeight * actionPercentage * 1) / 4) * 10 * 4 * 1.2;
 
-    const familiarValue = [[$familiar`Stocking Mimic`, mimicValue]];
+    const familiarValue: [Familiar, number][] = [[$familiar`Stocking Mimic`, mimicValue]];
     for (const familiarName of Object.keys(rotatingFamiliars)) {
       const familiar: Familiar = Familiar.get(familiarName);
       const { expected, drop, pref } = rotatingFamiliars[familiarName];
@@ -275,21 +317,25 @@ export function pickFamiliar(location: Location, freeRun: boolean, goal = GOAL_N
       const value = mallPrice(drop) / expected[dropsAlready];
       familiarValue.push([familiar, value]);
     }
-    pickedFamiliar = argmax(familiarValue);
+    pickedFamiliar = argmax(familiarValue) as Familiar;
   }
   useFamiliar(pickedFamiliar);
   if (pickedFamiliar === $familiar`Stocking Mimic`) equip($item`bag of many confections`);
-  print(`Picked familiar ${myFamiliar()}.`, 'blue');
+  if (getProperty('minehobo_lastPickedFamiliar') !== `${pickedFamiliar}`) {
+    print(`Picked familiar ${myFamiliar()}.`, 'blue');
+    setProperty('minehobo_lastPickedFamiliar', `${pickedFamiliar}`);
+  }
 }
 
-export function preAdventure(location: Location, freeRun = false, familiarLocked = false) {
+export function preAdventure(location: Location, freeRun = false, familiarLocked = false, goal = GOAL_NONE) {
   if (haveEffect($effect`Beaten Up`) > 0) {
     throw 'Got beaten up.';
   }
 
   sausageMp(100);
   if (myMp() < 100) restoreMp(100);
-  if (!familiarLocked) pickFamiliar(location, freeRun);
+  if (myHp() < 0.8 * myMaxhp() || myHp() < 500) restoreHp(myMaxhp());
+  if (!familiarLocked) pickFamiliar(location, freeRun, goal);
   for (const item of $items`hobo nickel, sand dollar`) {
     if (itemAmount(item) > 0) {
       putCloset(itemAmount(item), item);
@@ -299,13 +345,13 @@ export function preAdventure(location: Location, freeRun = false, familiarLocked
 }
 
 export function lastWasCombat() {
-  return myLocation().noncombatQueue.includes(getProperty('lastEncounter'));
+  return !myLocation().noncombatQueue.includes(getProperty('lastEncounter'));
 }
 
 export function unclosetNickels() {
-  for (const item of $items`hobo nickel, sand dollar`) {
+  /*for (const item of $items`hobo nickel, sand dollar`) {
     takeCloset(closetAmount(item), item);
-  }
+  }*/
 }
 
 export function stopAt(args: string) {
@@ -313,16 +359,48 @@ export function stopAt(args: string) {
   if (Number.isFinite(parseInt(args, 10))) {
     stopTurncount = myTurncount() + parseInt(args, 10);
   }
-  return stopTurncount;
+  return Math.round(stopTurncount);
 }
 
 export function mustStop(stopTurncount: number) {
   return myTurncount() >= stopTurncount || myAdventures() === 0;
 }
 
-export function intro() {
-  cliExecute('mood apathetic');
-  cliExecute('ccs minehobo2');
+export function ensureJingle() {
+  if (haveEffect($effect`Jingle Jangle Jingle`) === 0) {
+    cliExecute(`csend to buffy || ${Math.round(myAdventures() * 1.1 + 200)} jingle`);
+    for (let i = 0; i < 5; i++) {
+      wait(3);
+      cliExecute('refresh status');
+      if (haveEffect($effect`Jingle Jangle Jingle`) > 0) break;
+    }
+    if (haveEffect($effect`Jingle Jangle Jingle`) === 0) abort('Get Jingle Bells first.');
+  }
+}
+
+function writeWhiteboard(text: string) {
+  visitUrl(`clan_basement.php?pwd&action=whitewrite&whiteboard=${urlEncode(text)}`, true, true);
+}
+
+export function recordInstanceState() {
+  const sewers = getSewersState();
+  const lines = [
+    `Sewers at ${sewers.grates} grates, ${sewers.valves} valves`,
+    `Ol' Scratch at image ${getImage($location`Burnbarrel Blvd.`)}`,
+    `Frosty at image ${getImage($location`Exposure Esplanade`)}`,
+    `Oscus at image ${getImage($location`The Heap`)}`,
+    `Zombo at image ${getImage($location`The Ancient Hobo Burial Ground`)}`,
+    `Chester at image ${getImage($location`The Purple Light District`)}`,
+  ];
+  let whiteboard = '';
+  const date = formatDateTime('yyyyMMdd', todayToString(), 'yyyy-MM-dd');
+  whiteboard += `Status as of ${date} ${timeToString()}:\n`;
+  for (const line of lines) {
+    print(line);
+    whiteboard += `${line}\n`;
+  }
+  writeWhiteboard(whiteboard);
+  print('"Mining" complete.');
 }
 
 const places: { [index: string]: { name: string; number: number } } = {
@@ -330,7 +408,7 @@ const places: { [index: string]: { name: string; number: number } } = {
     name: 'townsquare',
     number: 2,
   },
-  'Burnbarrel Blvd\\.': {
+  'Burnbarrel Blvd.': {
     name: 'burnbarrelblvd',
     number: 4,
   },
@@ -359,38 +437,57 @@ export function getImage(location: Location) {
   return parseInt(match[1], 10);
 }
 
+const memoizeStore = new Map<() => unknown, [number, unknown]>();
+export function memoizeTurncount<T>(func: (...args: []) => T, defaultTurnThreshold = 1) {
+  const forceUpdate = (...args: []) => {
+    return memoizeStore.set(func, [myTurncount(), func(...args)]);
+  };
+  const result = (...args: []) => {
+    const [lastTurncount, lastResult] = memoizeStore.get(func) || [-1, null];
+    if (myTurncount() >= lastTurncount + defaultTurnThreshold) {
+      return (forceUpdate(...args).get(func) || [-1, null])[1] as T;
+    } else {
+      return lastResult as T;
+    }
+  };
+  result.forceUpdate = forceUpdate;
+  return result;
+}
+
+export const getImageTownsquare = memoizeTurncount(() => getImage($location`Hobopolis Town Square`), 10);
+export const getImageBb = memoizeTurncount(() => getImage($location`Burnbarrel Blvd.`));
+export const getImageEe = memoizeTurncount(() => getImage($location`Exposure Esplanade`), 10);
+export const getImageHeap = memoizeTurncount(() => getImage($location`The Heap`), 10);
+export const getImagePld = memoizeTurncount(() => getImage($location`The Purple Light District`), 10);
+export const getImageAhbg = memoizeTurncount(() => getImage($location`The Ancient Hobo Burial Ground`), 10);
+
 export function wrapMain(action: () => void) {
   try {
+    ensureJingle();
+    cliExecute('counters nowarn Fortune Cookie');
+    cliExecute('mood apathetic');
+    cliExecute('ccs minehobo2');
     action();
-  } catch (e) {
-    print(`Error while "mining": ${e}`);
+    print('Done mining.');
   } finally {
     setAutoAttack(0);
+    setProperty('minehobo_lastObjective', '');
+    setProperty('minehobo_lastStats', '');
+    setProperty('minehobo_lastFamiliar', '');
     unclosetNickels();
+    if (throughSewers()) recordInstanceState();
   }
 }
 
-const memoizeStore = new Map<() => unknown, [number, unknown]>();
-export function memoizeTurncount<T>(func: () => T) {
-  return () => {
-    let [lastTurncount, lastResult] = memoizeStore.get(func) || [-1, null];
-    if (myTurncount() > lastTurncount) {
-      lastTurncount = myTurncount();
-      lastResult = func();
-      memoizeStore.set(func, [lastTurncount, lastResult]);
-    }
-    return lastResult as T;
-  };
-}
-
 export function extractInt(regex: RegExp, text: string, group = 1) {
+  if (!regex.global) throw 'Regexes must be global.';
   let result = 0;
   let match;
   while ((match = regex.exec(text)) !== null) {
     if (match[group] === 'a') {
       result += 1;
     } else {
-      result += parseInt(match[1], 10);
+      result += parseInt(match[group], 10);
     }
   }
   return result;

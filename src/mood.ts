@@ -27,6 +27,8 @@ import {
   takeStash,
   putStash,
   myEffects,
+  retrieveItem,
+  print,
 } from 'kolmafia';
 import { $effect, $effects, $item, $items, $skill } from 'libram/src';
 import { fillAsdonMartinTo } from './asdon';
@@ -149,15 +151,20 @@ export function tryEnsurePotionMultiple(items: Item[], turns = 1, maxPricePerTur
   return tryEnsurePotion(cheapest(...items), turns, maxPricePerTurn);
 }
 
-export function tryEnsurePotion(item: Item, turns = 1, maxPricePerTurn = 100) {
-  turns = clamp(turns, 0, myAdventures() * 1.1 + 5);
-  const effect = effectModifier(item, 'Effect');
+export function tryEnsurePotion(item: Item, turns = 1, maxPricePerTurn = 100, actualItem: Item | null = null) {
+  // Actual item is for when we might buy the ingredients rather than the potion itself.
+  turns = Math.round(clamp(turns, 0, myAdventures() * 1.1 + 5));
+  const potion = actualItem || item;
+  const effect = effectModifier(potion, 'Effect');
   const effectTurns = haveEffect(effect);
-  const turnsPerUse = numericModifier(item, 'Effect Duration');
+  const turnsPerUse = numericModifier(potion, 'Effect Duration');
+  if (mallPrice(item) > maxPricePerTurn * turnsPerUse) return false;
   if (effectTurns < turns) {
+    print(`${effect}: going for ${turns} turns, currently ${effectTurns}`);
     const uses = Math.ceil(Math.min((turns - effectTurns) / turnsPerUse, 1000 / turnsPerUse));
-    getItem(uses, item, maxPricePerTurn * turnsPerUse);
-    use(uses, item);
+    getItem(uses - (actualItem !== null ? availableAmount(actualItem) : 0), item, maxPricePerTurn * turnsPerUse);
+    if (actualItem !== null) retrieveItem(uses, actualItem);
+    use(uses, potion);
   }
   return haveEffect(effect) >= turns;
 }
@@ -183,9 +190,10 @@ export function tryEnsureTriviaMaster(turns = 1) {
   return haveEffect(triviaMaster) >= turns;
 }
 
-export function driveStealthily(maxTurns: number) {
-  const count = Math.ceil(maxTurns / 30);
+export function drive(effect: Effect, maxTurns: number) {
+  const count = Math.ceil((maxTurns - haveEffect(effect)) / 30);
   fillAsdonMartinTo(count * 37);
+  for (let i = 0; i < count; i++) cliExecute(`asdonmartin drive ${effect.name.replace('Driving ', '')}`);
 }
 
 export function moodBaseline(maxTurns: number) {
@@ -200,9 +208,7 @@ export function moodBaseline(maxTurns: number) {
   tryEnsureSkill($skill`Song of Starch`, maxTurns);
   tryEnsureSkill($skill`Quiet Determination`, maxTurns);
   tryEnsureSkill($skill`Springy Fusilli`, maxTurns);
-  if (mallPrice($item`pec oil`) < 200) {
-    tryEnsureEffect($effect`Oiled-Up`, maxTurns);
-  }
+  tryEnsurePotion($item`pec oil`, maxTurns);
 
   // Elemental res.
   tryEnsureSkill($skill`Elemental Saucesphere`, maxTurns);
@@ -215,28 +221,58 @@ export function moodBaseline(maxTurns: number) {
   tryEnsureSkill($skill`Leash of Linguini`, maxTurns);
 }
 
-export function moodNoncombat(maxTurnsBaseline: number, maxTurnsNoncombat: number, maxPricePerTurn = 100) {
+export function moodMinusCombat(maxTurnsBaseline: number, maxTurnsMinusCombat: number, maxPricePerTurn = 100) {
   moodBaseline(maxTurnsBaseline);
 
-  driveStealthily(maxTurnsNoncombat);
-  tryEnsureSong($skill`The Sonata of Sneakiness`, maxTurnsNoncombat);
-  tryEnsureSkill($skill`Smooth Movement`, maxTurnsNoncombat);
-  tryEnsurePotion(cheapest(...$items`snow cleats, winter berries`), maxTurnsNoncombat, maxPricePerTurn);
-  tryEnsurePotion(cheapest(...$items`chunk of rock salt, deodorant`), maxTurnsNoncombat, maxPricePerTurn);
-  tryEnsurePotion($item`Daily Affirmation: Be Superficially Interested`, maxTurnsNoncombat, maxPricePerTurn);
-  tryEnsurePotion($item`shoe gum`, maxTurnsNoncombat, maxPricePerTurn);
-  tryEnsurePotion($item`patent invisibility tonic`, maxTurnsNoncombat, 3 * maxPricePerTurn);
+  maxTurnsMinusCombat = clamp(maxTurnsMinusCombat, 1, maxTurnsBaseline);
 
-  for (const effect of myEffects()) {
-    if (effect === $effect`Become Intensely Interested`) cliExecute('toggle Become Intensely Interested');
-    else if (numericModifier(effect, 'Combat Rate') > 0) shrug(effect);
+  drive($effect`Driving Stealthily`, maxTurnsMinusCombat);
+  tryEnsureSong($skill`The Sonata of Sneakiness`, maxTurnsMinusCombat);
+  tryEnsureSkill($skill`Smooth Movement`, maxTurnsMinusCombat);
+  tryEnsurePotion(
+    cheapest(...$items`snow cleats, snow berries`),
+    maxTurnsMinusCombat,
+    maxPricePerTurn,
+    $item`snow cleats`
+  );
+  tryEnsurePotion(cheapest(...$items`chunk of rock salt, deodorant`), maxTurnsMinusCombat, maxPricePerTurn);
+  tryEnsurePotion($item`Daily Affirmation: Be Superficially Interested`, maxTurnsMinusCombat, maxPricePerTurn);
+  tryEnsurePotion($item`shoe gum`, maxTurnsMinusCombat, maxPricePerTurn);
+  tryEnsurePotion($item`patent invisibility tonic`, maxTurnsMinusCombat, 3 * maxPricePerTurn);
+
+  if (haveEffect($effect`Become Intensely Interested`) > 0) cliExecute('toggle Become Intensely Interested');
+  for (const effectName of Object.keys(myEffects())) {
+    const effect = Effect.get(effectName);
+    if (numericModifier(effect, 'Combat Rate') > 0) shrug(effect as Effect);
   }
 
-  if (getPropertyBoolean('horseryAvailable') && getProperty('Horsery') !== 'dark horse') {
+  if (getPropertyBoolean('horseryAvailable') && getProperty('_horsery') !== 'dark horse') {
     cliExecute('horsery dark');
   }
 }
 
+export function moodPlusCombat(maxTurnsBaseline: number, maxTurnsPlusCombat: number, maxPricePerTurn = 100) {
+  moodBaseline(maxTurnsBaseline);
+
+  maxTurnsPlusCombat = clamp(maxTurnsPlusCombat, 1, maxTurnsBaseline);
+
+  drive($effect`Driving Obnoxiously`, maxTurnsPlusCombat);
+  tryEnsureSong($skill`Carlweather's Cantata of Confrontation`, maxTurnsPlusCombat);
+  tryEnsureSkill($skill`Musk of the Moose`, maxTurnsPlusCombat);
+  tryEnsurePotion(cheapest(...$items`reodorant, handful of pine needles`), maxTurnsPlusCombat, maxPricePerTurn);
+  tryEnsurePotion($item`patent aggression tonic`, maxTurnsPlusCombat, 3 * maxPricePerTurn);
+  tryEnsurePotion($item`lion musk`, maxTurnsPlusCombat, 3 * maxPricePerTurn);
+
+  if (haveEffect($effect`Become Superficially Interested`) > 0) cliExecute('toggle Become Superficially Interested');
+  for (const effectName of Object.keys(myEffects())) {
+    const effect = Effect.get(effectName);
+    if (numericModifier(effect, 'Combat Rate') < 0) shrug(effect as Effect);
+  }
+
+  if (getPropertyBoolean('horseryAvailable') && getProperty('_horsery') === 'dark horse') {
+    cliExecute('horsery normal');
+  }
+}
 export function moodAddItem() {
   tryEnsureSong($skill`Fat Leon's Phat Loot Lyric`);
   tryEnsureSkill($skill`Singer's Faithful Ocelot`);
@@ -244,5 +280,5 @@ export function moodAddItem() {
 }
 
 export function expectedTurns(stopTurncount: number) {
-  return Math.min(stopTurncount - myTurncount(), myAdventures());
+  return Math.min(stopTurncount - myTurncount(), myAdventures() * 1.1 + 50);
 }

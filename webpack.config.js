@@ -2,10 +2,14 @@ const path = require('path');
 
 module.exports = {
   entry: {
-    lib: './src/lib.ts',
     minehobo2: './src/minehobo2.ts',
-    combat: './src/combat.ts',
+    'minehobo2-combat': './src/combat.ts',
+    'minehobo2-lib': './src/lib.ts',
+    asdonlib: './src/asdon.ts',
     wl: './src/wl.ts',
+    hobostatus: './src/status.ts',
+    sewers: './src/sewers.ts',
+    ee: './src/ee.ts',
   },
   mode: 'development',
   devtool: false,

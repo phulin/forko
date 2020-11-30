@@ -1,4 +1,4 @@
-import { floor, visitUrl, print, myTurncount } from 'kolmafia';
+import { floor, visitUrl, print } from 'kolmafia';
 import { $location } from 'libram/src';
 import { adventureMacro, Macro } from './combat';
 import {
@@ -12,7 +12,7 @@ import {
   usualDropItems,
   wrapMain,
 } from './lib';
-import { moodNoncombat } from './mood';
+import { expectedTurns, moodMinusCombat } from './mood';
 
 const STACKHEIGHT = 34;
 function tirevalancheKills(tires: number) {
@@ -32,9 +32,9 @@ export function getBbState() {
   state.image = getImage($location`Burnbarrel Blvd.`);
 
   const logText = visitUrl('clan_raidlogs.php');
-  state.estimatedProgress = extractInt(/defeated +Hot hobo x ([0-9]+)/, logText);
-  state.tirevalanches = extractInt(/started (a|[0-9]+) tirevalanche/, logText);
-  state.tiresTotal = extractInt(/threw ([0-9]+) tire/, logText);
+  state.estimatedProgress = extractInt(/defeated +Hot hobo x ([0-9]+)/g, logText);
+  state.tirevalanches = extractInt(/started (a|[0-9]+) tirevalanche/g, logText);
+  state.tiresTotal = extractInt(/threw ([0-9]+) tire/g, logText);
   state.tiresCurrent = state.tiresTotal - STACKHEIGHT * state.tirevalanches;
   state.estimatedProgress += tirevalancheKills(STACKHEIGHT) * state.tirevalanches;
   if (state.estimatedProgress < state.image * 50 || state.estimatedProgress > (state.image + 1) * 50) {
@@ -44,7 +44,7 @@ export function getBbState() {
   return state;
 }
 
-function doBb(stopTurncount: number) {
+export function doBb(stopTurncount: number) {
   if (getImage($location`Burnbarrel Blvd.`) >= 10) {
     print('Finished BB.');
     return;
@@ -76,7 +76,7 @@ function doBb(stopTurncount: number) {
       setChoice(206, 2); // Stack normally.
     }
 
-    moodNoncombat(stopTurncount - myTurncount(), Math.max(2.1 * (100 - state.tiresTotal), 1), maxPricePerTurn);
+    moodMinusCombat(expectedTurns(stopTurncount), Math.max(2.1 * (100 - state.tiresTotal), 1), maxPricePerTurn);
     maximizeCached(['-combat'], usualDropItems);
     preAdventure($location`Burnbarrel Blvd.`, false, false);
     maximizeCached(['-combat'], usualDropItems);

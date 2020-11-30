@@ -71,9 +71,10 @@ const currentParts = memoizeTurncount(() => {
   const result = new Map<HoboPart, number>();
   const text = visitUrl('clan_hobopolis.php?place=3&action=talkrichard&whichtalk=3');
   for (const part of allParts.values()) {
-    const partRe = new RegExp('<b>(a|[0-9]+)</b> ' + part.regex.source);
+    const partRe = new RegExp('<b>(a|[0-9]+)</b> ' + part.regex.source, 'g');
     result.set(part, extractInt(partRe, text));
   }
+  for (const [key, value] of result) print(`${key.name}: ${value}`);
   return result;
 });
 
@@ -143,7 +144,7 @@ export function doTownsquare(stopTurncount: number) {
     // Start with the part with the fewest (should be 0).
     const partCounts = [...currentParts().entries()];
     partCounts.sort((x, y) => x[1] - y[1]);
-    const plan = [...allParts.values()].map((part: HoboPart) => new PartPlan(part));
+    const plan = partCounts.map(([part]: [HoboPart, number]) => new PartPlan(part));
     for (const [idx, [, partCount]] of partCounts.entries()) {
       if (hobosRemaining > 0 && idx < partCounts.length - 1) {
         const [, nextPartCount] = partCounts[idx + 1];
@@ -166,6 +167,9 @@ export function doTownsquare(stopTurncount: number) {
       }
     }
 
+    for (const partPlan of plan) {
+      print('PLAN: For part ' + partPlan.type.name + ', get ' + partPlan.count + ' more parts.');
+    }
     plan.sort((x, y) => x.type.type - y.type.type);
     for (const partPlan of plan) {
       print('PLAN: For part ' + partPlan.type.name + ', get ' + partPlan.count + ' more parts.');
@@ -184,6 +188,7 @@ export function doTownsquare(stopTurncount: number) {
     }
     print('Making available scarehobos.');
     visitUrl('clan_hobopolis.php?preaction=simulacrum&place=3&qty=1&makeall=1');
+    currentParts.forceUpdate();
   }
   if (pldAccessible()) {
     print('PLD accessible. Done with town square.');

@@ -22,7 +22,9 @@ import {
   wrapMain,
   extractInt,
   lastWasCombat,
+  clamp,
 } from './lib';
+import { expectedTurns, moodMinusCombat } from './mood';
 
 // Formatted like clanid:ascension;clanid:ascension
 function clanYodelAscensions() {
@@ -68,9 +70,9 @@ export function printState(state: EEState) {
   print('Flimflams: ' + state.flimflams);
 }
 
-export function getState() {
+export function getState(checkImage = true) {
   const state = new EEState();
-  if (myTurncount() % 10 === 0) {
+  if (checkImage || myTurncount() % 10 === 0) {
     state.image = getImage($location`Exposure Esplanade`);
     if (state.image < 0) {
       abort('Cannot get to EE.');
@@ -78,11 +80,11 @@ export function getState() {
   }
 
   const logText = visitUrl('clan_raidlogs.php');
-  const pipeRe = /broke (a|[0-9]+) water pipe/;
+  const pipeRe = /broke (a|[0-9]+) water pipe/g;
   state.icicles = extractInt(pipeRe, logText);
-  const divertRe = /diverted some cold water out of Exposure Esplanade \(([0-9]+) turn/;
+  const divertRe = /diverted some cold water out of Exposure Esplanade \(([0-9]+) turn/g;
   state.diverts = extractInt(divertRe, logText);
-  const flimflamRe = /flimflammed some hobos \(([0-9]+) turn/;
+  const flimflamRe = /flimflammed some hobos \(([0-9]+) turn/g;
   state.flimflams = extractInt(flimflamRe, logText);
   return state;
 }
@@ -90,7 +92,7 @@ export function getState() {
 export const ICICLE_COUNT = 85;
 export const DIVERT_COUNT = 16;
 export function doEe(stopTurncount: number, pass: number) {
-  let state = getState();
+  let state = getState(true);
   let yodeled = yodeledThisAscension();
   if (
     ((pass === 1 && (state.icicles < ICICLE_COUNT || state.diverts + state.flimflams < DIVERT_COUNT) && !yodeled) ||
@@ -128,8 +130,10 @@ export function doEe(stopTurncount: number, pass: number) {
       // Yodel heart out if we're done with icicles.
       setChoice(217, state.icicles >= ICICLE_COUNT ? 3 : 1);
 
+      const estimatedTurns = 2 * (ICICLE_COUNT - state.icicles) + state.image * 10;
+      moodMinusCombat(expectedTurns(stopTurncount), clamp(estimatedTurns, 0, 300));
       maximizeCached(['-combat'], usualDropItems);
-      preAdventure($location`Exposure Esplanade`, false, false);
+      preAdventure($location`Exposure Esplanade`);
       maximizeCached(['-combat'], usualDropItems);
       adventureMacro($location`Exposure Esplanade`, Macro.abort());
 
@@ -156,5 +160,5 @@ export function doEe(stopTurncount: number, pass: number) {
 }
 
 export function main(args: string) {
-  wrapMain(() => doEe(stopAt(args), 3));
+  wrapMain(() => doEe(stopAt(args), 4));
 }

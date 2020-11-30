@@ -29,39 +29,49 @@ function getTargetClanName(target: string) {
   return targetClanNames[0];
 }
 
-export function setClan(target: string) {
+export function setClan(target: string, verbose = true) {
   const targetClanName = getTargetClanName(target);
   if (getClanName() !== targetClanName) {
-    print(`Switching to clan: ${targetClanName}.`);
+    if (verbose) print(`Switching to clan: ${targetClanName}.`);
     visitUrl(
       `showclan.php?whichclan=${getClanCache(targetClanName).get(targetClanName)}&action=joinclan&confirm=on&pwd`
     );
     if (getClanName() !== targetClanName) {
       throw `Failed to switch clans to ${target}. Did you spell it correctly? Are you whitelisted?`;
     }
-    print('Successfully switched clans.', 'green');
+    if (verbose) print('Successfully switched clans.', 'green');
   } else {
-    print(`Already in clan ${targetClanName}.`, 'blue');
+    if (verbose) print(`Already in clan ${targetClanName}.`, 'blue');
   }
   return true;
 }
 
-export function main(target: string | null = null) {
-  if (target !== null) setClan(target);
-  const clans = ['The Beanery', 'The Marketeers', 'worthawholebean Side Clan', 'The Old Saloon', 'Aftercorers'];
-  if (clans.includes(getClanName())) {
-    const raidlogs = visitUrl('clan_raidlogs.php');
-    const bosses = ["Ol' Scratch", 'Frosty', 'Oscus', 'Zombo', 'Chester', 'Hodgman'];
-    const bossRe = new RegExp('defeated +(' + bosses.join('|') + ')', 'g');
-    const bossCount = (raidlogs.match(bossRe) || []).length;
-    print();
-    if (bossCount >= 4) {
-      printHtml('<b>Hobopolis cleared. ' + bossCount + ' bosses defeated.</b>');
-    } else {
-      const whiteboard = visitUrl('clan_basement.php?whiteboard=1').match(
-        '<textarea[^>]*name=whiteboard[^>]*>([^<]*)</textarea>'
-      )[1];
-      whiteboard.split('\n').forEach((line: string) => print(line));
+export function printClanStatus() {
+  const raidlogs = visitUrl('clan_raidlogs.php');
+  const bosses = ["Ol' Scratch", 'Frosty', 'Oscus', 'Zombo', 'Chester', 'Hodgman'];
+  const bossRe = new RegExp('defeated +(' + bosses.join('|') + ')', 'g');
+  const bossCount = (raidlogs.match(bossRe) || []).length;
+  if (bossCount >= 4) {
+    printHtml('<b>Hobopolis cleared. ' + bossCount + ' bosses defeated.</b>');
+  } else {
+    const whiteboard = visitUrl('clan_basement.php?whiteboard=1').match(
+      '<textarea[^>]*name=whiteboard[^>]*>([^<]*)</textarea>'
+    )[1];
+    for (const line of whiteboard.split('\n')) {
+      if (line.trim().length > 0) print(line);
     }
   }
+  print();
+}
+
+export const farmingClans = [
+  'The Beanery',
+  'The Marketeers',
+  'worthawholebean Side Clan',
+  'The Old Saloon',
+  'Aftercorers',
+];
+export function main(target: string | null = null) {
+  if (target !== null) setClan(target);
+  if (farmingClans.includes(getClanName())) printClanStatus();
 }

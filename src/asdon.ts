@@ -12,14 +12,9 @@ function averageAdventures(it: Item) {
   }
 }
 
-function relevantPrice(it: Item) {
-  if ($items`bottle of gin, bottle of whiskey, bottle of rum`.includes(it)) return 35;
-  else return historicalPrice(it);
-}
-
-function calculateFuelEfficiency(it: Item, targetUnits: number) {
+export function calculateFuelEfficiency(it: Item, targetUnits: number) {
   const units = averageAdventures(it);
-  return relevantPrice(it) / Math.min(targetUnits, units);
+  return historicalPrice(it) / Math.min(targetUnits, units);
 }
 
 function isFuelItem(it: Item) {

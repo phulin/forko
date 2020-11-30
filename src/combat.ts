@@ -16,7 +16,6 @@ import {
   haveEffect,
   runaway,
   itemAmount,
-  use,
   handlingChoice,
   lastChoice,
   runChoice,
@@ -26,8 +25,11 @@ import {
   urlEncode,
   xpath,
   getAutoAttack,
+  haveFamiliar,
+  myInebriety,
+  inebrietyLimit,
 } from 'kolmafia';
-import { $familiar, $item, $items, $monster, $skill } from 'libram/src';
+import { $effect, $familiar, $item, $items, $monster, $skill, $skills } from 'libram/src';
 import { getPropertyInt, myFamiliarWeight } from './lib';
 
 // multiFight() stolen from Aenimus: https://github.com/Aenimus/aen_cocoabo_farm/blob/master/scripts/aen_combat.ash.
@@ -35,6 +37,21 @@ import { getPropertyInt, myFamiliarWeight } from './lib';
 function multiFight() {
   while (inMultiFight()) runCombat();
   if (choiceFollowsFight()) visitUrl('choice.php');
+}
+
+const MACRO_NAME = 'Bean Scripts Macro';
+export function getMacroId() {
+  const macroMatches = xpath(
+    visitUrl('account_combatmacros.php'),
+    `//select[@name="macroid"]/option[text()="${MACRO_NAME}"]/@value`
+  );
+  if (macroMatches.length === 0) {
+    visitUrl('account_combatmacros.php?action=new');
+    const newMacroText = visitUrl(`account_combatmacros.php?macroid=0&name=${MACRO_NAME}&macrotext=abort&action=save`);
+    return parseInt(xpath(newMacroText, '//input[@name=macroid]/@value')[0], 10);
+  } else {
+    return parseInt(macroMatches[0], 10);
+  }
 }
 
 export class Macro {
@@ -82,8 +99,12 @@ export class Macro {
     visitUrl(`account.php?am=1&action=autoattack&value=99${Macro.cachedMacroId}&ajax=1`);
   }
 
+  abort() {
+    return this.step('abort');
+  }
+
   static abort() {
-    return new Macro().step('abort');
+    return new Macro().abort();
   }
 
   static hpbelow(threshold: number) {
@@ -147,6 +168,13 @@ export class Macro {
     return new Macro().skill(sk);
   }
 
+  skills(skills: Skill[]) {
+    for (const skill of skills) {
+      this.skill(skill);
+    }
+    return this;
+  }
+
   skillRepeat(sk: Skill) {
     const name = sk.name.replace('%fn, ', '');
     return this.mIf(`hasskill ${name}`, Macro.step(`skill ${name}`, 'repeat'));
@@ -166,6 +194,17 @@ export class Macro {
     return new Macro().item(it);
   }
 
+  items(items: Item[]) {
+    for (const item of items) {
+      this.item(item);
+    }
+    return this;
+  }
+
+  static items(items: Item[]) {
+    return new Macro().items(items);
+  }
+
   attack() {
     return this.step('attack');
   }
@@ -175,9 +214,10 @@ export class Macro {
   }
 
   stasis() {
-    return this.mIf('!hpbelow 500', Macro.skill($skill`Extract`))
+    return this.externalIf(myInebriety() > inebrietyLimit(), 'attack')
+      .mIf('!hpbelow 500', Macro.skill($skill`Extract`))
       .mIf('!hpbelow 500', Macro.skill($skill`Extract Jelly`))
-      .mWhile('!pastround 10 && !hpbelow 500', Macro.item($item`seal tooth`));
+      .mWhile('!pastround 9 && !hpbelow 500', Macro.item($item`seal tooth`));
   }
 
   static stasis() {
@@ -185,7 +225,8 @@ export class Macro {
   }
 
   kill() {
-    return this.mIf(Macro.monster($monster`sleaze hobo`), Macro.skillRepeat($skill`Saucegeyser`))
+    return this.externalIf(myInebriety() > inebrietyLimit(), 'attack')
+      .mIf(Macro.monster($monster`sleaze hobo`), Macro.skillRepeat($skill`Saucegeyser`))
       .skill($skill`Shattering Punch`)
       .skill($skill`Gingerbread Mob Hit`)
       .skill($skill`Chest X-Ray`)
@@ -198,13 +239,28 @@ export class Macro {
   static kill() {
     return new Macro().kill();
   }
+
+  static freeRun() {
+    return new Macro()
+      .skill($skill`Extract`)
+      .skill($skill`Extract Jelly`)
+      .externalIf(
+        (haveFamiliar($familiar`Frumious Bandersnatch`) && haveEffect($effect`The Ode to Booze`)) ||
+          haveFamiliar($familiar`Pair of Stomping Boots`),
+        'runaway'
+      )
+      .skills(
+        $skills`Spring-Loaded Front Bumper, Reflex Hammer, KGB tranquilizer dart, Throw Latte on Opponent, Snokebomb`
+      )
+      .items($items`Louder Than Bomb, tattered scrap of paper, GOTO, green smoke bomb`)
+      .abort();
+  }
 }
 
 export const MODE_NULL = '';
-export const MODE_CUSTOM = 'custom';
+export const MODE_MACRO = 'macro';
 export const MODE_FIND_MONSTER_THEN = 'findthen';
 export const MODE_RUN_UNLESS_FREE = 'rununlessfree';
-export const MODE_KILL = 'kill';
 
 export function setMode(mode: string, arg1: string | null = null, arg2: string | null = null) {
   setProperty('minehobo_combatMode', mode);
@@ -245,11 +301,11 @@ function usedBanisherInZone(banished: { [index: string]: Monster }, banisher: st
   return getLocationMonsters(loc)[banished[banisher].name] === undefined;
 }
 
-const freeRunItems = $items`Louder Than Bomb, tattered scrap of paper, GOTO`;
+const freeRunItems = $items`Louder Than Bomb, tattered scrap of paper, GOTO, green smoke bomb`;
 export function main(initround: number, foe: Monster) {
   const mode = getMode();
   const loc = myLocation();
-  if (mode === MODE_CUSTOM) {
+  if (mode === MODE_MACRO) {
     Macro.step(getArg1()).repeatSubmit();
   } else if (mode === MODE_FIND_MONSTER_THEN) {
     const monsterId = parseInt(getArg1(), 10);
@@ -301,16 +357,11 @@ export function main(initround: number, foe: Monster) {
     } else if (myMp() >= 50 && haveSkill(Skill.get('Snokebomb')) && getPropertyInt('_snokebombUsed') < 3) {
       useSkill(1, Skill.get('Snokebomb'));
     } else if (freeRunItems.some(it => itemAmount(it) > 0)) {
-      use(
-        1,
-        freeRunItems.find(it => itemAmount(it) > 0)
-      );
+      Macro.item(freeRunItems.find(it => itemAmount(it) > 0) as Item).repeatSubmit();
     } else {
       // non-free, whatever
       throw "Couldn't find a way to run away for free!";
     }
-  } else if (mode === MODE_KILL) {
-    Macro.kill().submit();
   } else {
     throw 'Unrecognized mode.';
   }
@@ -325,10 +376,17 @@ export function saberYr() {
   }
 }
 
+export function adventureMode(loc: Location, mode: string, arg1: string | null = null, arg2: string | null = null) {
+  setMode(mode, arg1, arg2);
+  try {
+    adv1(loc, -1, '');
+  } finally {
+    setMode(MODE_NULL, '', '');
+  }
+}
+
 export function adventureMacro(loc: Location, macro: Macro) {
-  setMode(MODE_CUSTOM, macro.toString());
-  adv1(loc, -1, '');
-  setMode(MODE_NULL, '');
+  adventureMode(loc, MODE_MACRO, macro.toString());
 }
 
 export function adventureKill(loc: Location) {
@@ -338,10 +396,13 @@ export function adventureKill(loc: Location) {
 function findMonsterThen(loc: Location, foe: Monster, macro: Macro) {
   setMode(MODE_FIND_MONSTER_THEN, foe.id.toString(), macro.toString());
   setProperty('minehobo_combatFound', 'false');
-  while (getProperty('minehobo_combatFound') !== 'true') {
-    adv1(loc, -1, '');
+  try {
+    while (getProperty('minehobo_combatFound') !== 'true') {
+      adv1(loc, -1, '');
+    }
+  } finally {
+    setMode(MODE_NULL, '');
   }
-  setMode(MODE_NULL, '');
 }
 
 export function findMonsterSaberYr(loc: Location, foe: Monster) {
@@ -350,21 +411,14 @@ export function findMonsterSaberYr(loc: Location, foe: Monster) {
 }
 
 export function adventureCopy(loc: Location, foe: Monster) {
-  setMode(
-    MODE_CUSTOM,
-    Macro.mIf(`!monstername "${foe.name}"`, new Macro().step('abort'))
-      .skill(Skill.get('Lecture on Relativity'))
-      .kill()
-      .toString()
+  adventureMacro(
+    loc,
+    Macro.mIf(`!monstername "${foe.name}"`, new Macro().step('abort')).skill(Skill.get('Lecture on Relativity')).kill()
   );
-  adv1(loc, -1, '');
-  setMode(MODE_NULL, '');
 }
 
 export function adventureRunUnlessFree(loc: Location) {
-  setMode(MODE_RUN_UNLESS_FREE);
-  adv1(loc, -1, '');
-  setMode(MODE_NULL);
+  adventureMode(loc, MODE_RUN_UNLESS_FREE);
 }
 
 export function adventureRunOrStasis(loc: Location, freeRun: boolean) {
@@ -374,20 +428,5 @@ export function adventureRunOrStasis(loc: Location, freeRun: boolean) {
     adventureMacro(loc, Macro.stasis().kill());
   } else {
     adventureMacro(loc, Macro.kill());
-  }
-}
-
-const MACRO_NAME = 'Bean Scripts Macro';
-export function getMacroId() {
-  const macroMatches = xpath(
-    visitUrl('account_combatmacros.php'),
-    `//select[@name="macroid"]/option[text()="${MACRO_NAME}"]/@value`
-  );
-  if (macroMatches.length === 0) {
-    visitUrl('account_combatmacros.php?action=new');
-    const newMacroText = visitUrl(`account_combatmacros.php?macroid=0&name=${MACRO_NAME}&macrotext=abort&action=save`);
-    return parseInt(xpath(newMacroText, '//input[@name=macroid]/@value')[0], 10);
-  } else {
-    return parseInt(macroMatches[0], 10);
   }
 }
