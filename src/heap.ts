@@ -16,6 +16,7 @@ import {
   stopAt,
   wrapMain,
   GOAL_MINUS_COMBAT,
+  getImageHeap,
 } from './lib';
 import { expectedTurns, moodMinusCombat } from './mood';
 
@@ -44,7 +45,7 @@ export function doHeap(stopTurncount: number) {
 
   while (getImage($location`The Heap`) < 10 && !mustStop(stopTurncount)) {
     print('NCS until we compost: ' + getPropertyInt('minehobo_heapNcsUntilCompost', 0));
-    print('Image: ' + getImage($location`The Heap`));
+    print('Image (approx): ' + getImageHeap());
 
     setChoice(216, getPropertyInt('minehobo_heapNcsUntilCompost', 0) <= 0 ? 1 : 2);
 

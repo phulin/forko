@@ -52,6 +52,7 @@ export function doPld(stopTurncount: number) {
     const maxFights = FREE_RUN_PLD ? 34 : 25;
     const tryFreeRun = state.fights < maxFights;
     setChoice(223, diverts + state.flimflams < 21 ? 3 : 1);
+    setChoice(224, tryFreeRun ? 2 : 1);
 
     const turnsEstimate = Math.max(0, maxFights - state.fights) + Math.max(0, 18 - state.kills);
     const location = $location`The Purple Light District`;

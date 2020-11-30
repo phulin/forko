@@ -42,16 +42,11 @@ function yodeledThisAscension() {
   return clanYodelAscensions().get(getClanId()) === myAscensions();
 }
 
-function recordYodel() {
+export function recordYodel() {
   print(`Recording yodel. Current: ${getProperty('minehobo_eeLastYodel')}`);
   const oldValue = clanYodelAscensions();
-  for (const clan of oldValue.keys()) {
-    if (clan === getClanId()) {
-      print('Found my clan.');
-      oldValue.set(clan, myAscensions());
-    }
-  }
-  const result = oldValue.entries();
+  oldValue.set(getClanId(), myAscensions());
+  const result = [...oldValue.entries()].map(([clanId, ascension]) => `${clanId}:${ascension}`).join(';');
   print(`New: ${result}`);
   setProperty('minehobo_eeLastYodel', result);
 }

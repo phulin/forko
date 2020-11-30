@@ -20,6 +20,7 @@ import {
   maximize,
   mpCost,
   myAdventures,
+  myAscensions,
   myBuffedstat,
   myFamiliar,
   myHp,
@@ -40,6 +41,7 @@ import {
   takeShop,
   timeToString,
   todayToString,
+  toInt,
   urlEncode,
   useFamiliar,
   visitUrl,
@@ -262,6 +264,28 @@ function argmax<T>(values: [T, number][]) {
   )[0];
 }
 
+function feedToMimic(amount: number, candy: Item) {
+  print(`Feeding mimic ${amount} ${candy.plural}`);
+  visitUrl(`familiarbinger.php?action=binge&qty=${amount}&whichitem=${toInt(candy)}`);
+}
+
+const mimicFeedCandy = $items`Cold Hots candy, Daffy Taffy, Mr. Mediocrebar, Senior Mints, Wint-o-Fresh Mint`;
+function maybeFeedMimic() {
+  if (
+    getPropertyInt('minehobo_lastMimicFeedAscension', 0) < myAscensions() &&
+    $familiar`Stocking Mimic`.experience < 600
+  ) {
+    const totalCandy = mimicFeedCandy.map((candy: Item) => itemAmount(candy)).reduce((s, x) => s + x, 0);
+    let remainingCandyToFeed = clamp(totalCandy * 0.03, 0, 800);
+    for (const candy of mimicFeedCandy) {
+      const toFeed = Math.min(remainingCandyToFeed, itemAmount(candy));
+      feedToMimic(toFeed, candy);
+      remainingCandyToFeed -= toFeed;
+    }
+    setPropertyInt('minehobo_lastMimicFeedAscension', myAscensions());
+  }
+}
+
 // 5, 10, 15, 20, 25 +5/turn: 5.29, 4.52, 3.91, 3.42, 3.03
 const rotatingFamiliars: { [index: string]: { expected: number[]; drop: Item; pref: string } } = {
   'Fist Turkey': {
@@ -320,7 +344,10 @@ export function pickFamiliar(location: Location, freeRun: boolean, goal = GOAL_N
     pickedFamiliar = argmax(familiarValue) as Familiar;
   }
   useFamiliar(pickedFamiliar);
-  if (pickedFamiliar === $familiar`Stocking Mimic`) equip($item`bag of many confections`);
+  if (pickedFamiliar === $familiar`Stocking Mimic`) {
+    equip($item`bag of many confections`);
+    maybeFeedMimic();
+  }
   if (getProperty('minehobo_lastPickedFamiliar') !== `${pickedFamiliar}`) {
     print(`Picked familiar ${myFamiliar()}.`, 'blue');
     setProperty('minehobo_lastPickedFamiliar', `${pickedFamiliar}`);

@@ -339,28 +339,37 @@ export function main(initround: number, foe: Monster) {
       // Hopefully at this point it comes back to the consult script.
     }
   } else if (mode === MODE_RUN_UNLESS_FREE) {
+    const preMacro = new Macro().step(getArg1());
+    const killMacro = new Macro().step(getArg2());
     if (foe.attributes.includes('FREE')) {
-      new Macro().skill(Skill.get('Curse of Weaksauce')).skill(Skill.get('Saucegeyser')).repeatSubmit();
-    } else if (
-      myFamiliar() === Familiar.get('Frumious Bandersnatch') &&
-      haveEffect(Effect.get('Ode to Booze')) > 0 &&
-      getPropertyInt('_banderRunaways') < myFamiliarWeight() / 5
-    ) {
-      const banderRunaways = getPropertyInt('_banderRunaways');
-      runaway();
-      if (getPropertyInt('_banderRunaways') === banderRunaways) {
-        print('WARNING: Mafia is not tracking bander runaways correctly.');
-        setProperty('_banderRunaways', banderRunaways + 1);
-      }
-    } else if (haveSkill(Skill.get('Reflex Hammer')) && getPropertyInt('_reflexHammerUsed') < 3) {
-      useSkill(1, Skill.get('Reflex Hammer'));
-    } else if (myMp() >= 50 && haveSkill(Skill.get('Snokebomb')) && getPropertyInt('_snokebombUsed') < 3) {
-      useSkill(1, Skill.get('Snokebomb'));
-    } else if (freeRunItems.some(it => itemAmount(it) > 0)) {
-      Macro.item(freeRunItems.find(it => itemAmount(it) > 0) as Item).repeatSubmit();
+      killMacro.submit();
     } else {
-      // non-free, whatever
-      throw "Couldn't find a way to run away for free!";
+      preMacro.submit();
+      if (
+        myFamiliar() === Familiar.get('Frumious Bandersnatch') &&
+        haveEffect(Effect.get('Ode to Booze')) > 0 &&
+        getPropertyInt('_banderRunaways') < myFamiliarWeight() / 5
+      ) {
+        const banderRunaways = getPropertyInt('_banderRunaways');
+        runaway();
+        if (getPropertyInt('_banderRunaways') === banderRunaways) {
+          print('WARNING: Mafia is not tracking bander runaways correctly.');
+          setProperty('_banderRunaways', banderRunaways + 1);
+        }
+      } else if (haveSkill(Skill.get('Reflex Hammer')) && getPropertyInt('_reflexHammerUsed') < 3) {
+        useSkill(1, Skill.get('Reflex Hammer'));
+      } else if (haveSkill(Skill.get('Spring-Loaded Front Bumper'))) {
+        useSkill(1, Skill.get('Spring-Loaded Front Bumper'));
+      } else if (haveSkill(Skill.get('KGB tranquilizer dart')) && getPropertyInt('_kgbTranquilizerDartUses') < 3) {
+        useSkill(1, Skill.get('KGB tranquilizer dart'));
+      } else if (myMp() >= 50 && haveSkill(Skill.get('Snokebomb')) && getPropertyInt('_snokebombUsed') < 3) {
+        useSkill(1, Skill.get('Snokebomb'));
+      } else if (freeRunItems.some(it => itemAmount(it) > 0)) {
+        Macro.item(freeRunItems.find(it => itemAmount(it) > 0) as Item).repeatSubmit();
+      } else {
+        // non-free, whatever
+        throw "Couldn't find a way to run away for free!";
+      }
     }
   } else {
     throw 'Unrecognized mode.';
@@ -417,16 +426,15 @@ export function adventureCopy(loc: Location, foe: Monster) {
   );
 }
 
-export function adventureRunUnlessFree(loc: Location) {
-  adventureMode(loc, MODE_RUN_UNLESS_FREE);
+export function adventureRunUnlessFree(loc: Location, preMacro: Macro, killMacro: Macro) {
+  adventureMode(loc, MODE_RUN_UNLESS_FREE, preMacro.toString(), killMacro.toString());
 }
 
 export function adventureRunOrStasis(loc: Location, freeRun: boolean) {
+  const killMacro = myFamiliar() === $familiar`Stocking Mimic` ? Macro.stasis().kill() : Macro.kill();
   if (freeRun) {
-    adventureRunUnlessFree(loc);
-  } else if (myFamiliar() === $familiar`Stocking Mimic`) {
-    adventureMacro(loc, Macro.stasis().kill());
+    adventureRunUnlessFree(loc, Macro.skill($skill`Extract`).skill($skill`Extract Jelly`), killMacro);
   } else {
-    adventureMacro(loc, Macro.kill());
+    adventureMacro(loc, killMacro);
   }
 }
