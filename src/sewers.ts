@@ -9,17 +9,9 @@ import {
   setAutoAttack,
 } from 'kolmafia';
 import { $item, $location } from 'libram/src';
+import { usualDropItems, AdventuringManager, PrimaryGoal } from './adventure';
 import { adventureRunOrStasis } from './combat';
-import {
-  AdventuringManager,
-  extractInt,
-  getChoice,
-  memoizeTurncount,
-  mustStop,
-  PrimaryGoal,
-  setChoice,
-  usualDropItems,
-} from './lib';
+import { extractInt, getChoice, memoizeTurncount, mustStop, setChoice } from './lib';
 import { expectedTurns, moodAddItem, moodMinusCombat } from './mood';
 
 export const getSewersState = memoizeTurncount(() => {

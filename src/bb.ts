@@ -1,17 +1,8 @@
 import { floor, visitUrl, print } from 'kolmafia';
 import { $location } from 'libram/src';
+import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacro, Macro } from './combat';
-import {
-  getImage,
-  setChoice,
-  mustStop,
-  stopAt,
-  extractInt,
-  usualDropItems,
-  wrapMain,
-  AdventuringManager,
-  PrimaryGoal,
-} from './lib';
+import { getImage, setChoice, mustStop, stopAt, extractInt, wrapMain } from './lib';
 import { expectedTurns, moodMinusCombat } from './mood';
 
 const STACKHEIGHT = 34;
@@ -61,8 +52,10 @@ export function doBb(stopTurncount: number) {
   let state = getBbState();
   while (state.image < 10 && !mustStop(stopTurncount)) {
     let maxPricePerTurn = 100;
+    let estimatedTurns = Math.max(2.1 * (100 - state.tiresTotal), 1);
     if (state.tiresCurrent >= 25 && state.estimatedProgress < 475) {
       maxPricePerTurn = 200;
+      estimatedTurns = 10;
     }
 
     if (state.estimatedProgress > 475 && state.tiresCurrent < 10) {
@@ -76,7 +69,7 @@ export function doBb(stopTurncount: number) {
       setChoice(206, 2); // Stack normally.
     }
 
-    moodMinusCombat(expectedTurns(stopTurncount), Math.max(2.1 * (100 - state.tiresTotal), 1), maxPricePerTurn);
+    moodMinusCombat(expectedTurns(stopTurncount), estimatedTurns, maxPricePerTurn);
     const manager = new AdventuringManager($location`Burnbarrel Blvd.`, PrimaryGoal.MINUS_COMBAT, [], usualDropItems);
     manager.preAdventure();
     adventureMacro($location`Burnbarrel Blvd.`, Macro.abort());

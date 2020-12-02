@@ -240,6 +240,17 @@ export function moodMinusCombat(maxTurnsBaseline: number, maxTurnsMinusCombat: n
   tryEnsurePotion($item`shoe gum`, maxTurnsMinusCombat, maxPricePerTurn);
   tryEnsurePotion($item`patent invisibility tonic`, maxTurnsMinusCombat, 3 * maxPricePerTurn);
 
+  if (
+    availableAmount($item`Powerful Glove`) > 0 &&
+    getPropertyInt('_powerfulGloveBatteryPowerUsed') < 100 &&
+    haveEffect($effect`Invisible Avatar`) < maxTurnsMinusCombat
+  ) {
+    cliExecute('checkpoint');
+    cliExecute('equip acc1 Powerful Glove');
+    tryEnsureEffect($effect`Invisible Avatar`, maxTurnsMinusCombat);
+    cliExecute('outfit checkpoint');
+  }
+
   if (haveEffect($effect`Become Intensely Interested`) > 0) cliExecute('toggle Become Intensely Interested');
   for (const effectName of Object.keys(myEffects())) {
     const effect = Effect.get(effectName);

@@ -10,20 +10,9 @@ import {
   myTurncount,
 } from 'kolmafia';
 import { $location } from 'libram/src';
+import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacro, Macro } from './combat';
-import {
-  mustStop,
-  setChoice,
-  getImage,
-  usualDropItems,
-  stopAt,
-  wrapMain,
-  extractInt,
-  lastWasCombat,
-  clamp,
-  AdventuringManager,
-  PrimaryGoal,
-} from './lib';
+import { mustStop, setChoice, getImage, stopAt, wrapMain, extractInt, lastWasCombat, clamp } from './lib';
 import { expectedTurns, moodMinusCombat } from './mood';
 
 // Formatted like clanid:ascension;clanid:ascension

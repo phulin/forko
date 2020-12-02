@@ -1,19 +1,9 @@
 import { visitUrl, print, setAutoAttack, lastChoice } from 'kolmafia';
 import { $location } from 'libram/src';
+import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureRunOrStasis } from './combat';
 import { getState as getEeState } from './ee';
-import {
-  setChoice,
-  mustStop,
-  stopAt,
-  extractInt,
-  usualDropItems,
-  wrapMain,
-  AdventuringManager,
-  PrimaryGoal,
-  getImagePld,
-  lastWasCombat,
-} from './lib';
+import { setChoice, mustStop, stopAt, extractInt, wrapMain, getImagePld, lastWasCombat } from './lib';
 import { expectedTurns, moodPlusCombat } from './mood';
 
 const FREE_RUN_PLD = true;

@@ -1,5 +1,6 @@
 import { print, lastChoice, visitUrl, lastMonster, myTurncount } from 'kolmafia';
 import { $location, $monster } from 'libram/src';
+import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacro, Macro } from './combat';
 import {
   getPropertyInt,
@@ -9,12 +10,9 @@ import {
   setPropertyInt,
   extractInt,
   clamp,
-  usualDropItems,
   stopAt,
   wrapMain,
   getImageHeap,
-  AdventuringManager,
-  PrimaryGoal,
 } from './lib';
 import { expectedTurns, moodMinusCombat } from './mood';
 

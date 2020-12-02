@@ -1,5 +1,6 @@
 import { visitUrl, print, lastChoice } from 'kolmafia';
 import { $location } from 'libram/src';
+import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacro, Macro } from './combat';
 import {
   setChoice,
@@ -11,9 +12,6 @@ import {
   extractInt,
   getImageAhbg,
   wrapMain,
-  usualDropItems,
-  PrimaryGoal,
-  AdventuringManager,
 } from './lib';
 import { expectedTurns, moodBaseline, moodMinusCombat } from './mood';
 
