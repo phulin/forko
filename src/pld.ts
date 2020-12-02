@@ -1,20 +1,20 @@
-import { visitUrl, print, setAutoAttack } from 'kolmafia';
+import { visitUrl, print, setAutoAttack, lastChoice } from 'kolmafia';
 import { $location } from 'libram/src';
 import { adventureRunOrStasis } from './combat';
 import { getState as getEeState } from './ee';
 import {
-  getImage,
   setChoice,
   mustStop,
   stopAt,
   extractInt,
-  maximizeFreeRuns,
   usualDropItems,
-  preAdventure,
-  GOAL_PLUS_COMBAT,
   wrapMain,
+  AdventuringManager,
+  PrimaryGoal,
+  getImagePld,
+  lastWasCombat,
 } from './lib';
-import { expectedTurns, moodAddItem, moodPlusCombat } from './mood';
+import { expectedTurns, moodPlusCombat } from './mood';
 
 const FREE_RUN_PLD = true;
 
@@ -34,12 +34,12 @@ function getPldState() {
 }
 
 export function doPld(stopTurncount: number) {
-  if (getImage($location`The Purple Light District`) === 10) {
+  if (getImagePld() === 10) {
     print('At Chester.');
     return;
   }
 
-  setChoice(205, 0); // Show Chester in browser.
+  setChoice(205, 2); // Leave Chester.
   setChoice(219, 1); // We shouldn't encounter Furtivity.
   setChoice(223, 1); // Get into the club.
   setChoice(294, 1); // Take SR
@@ -48,7 +48,7 @@ export function doPld(stopTurncount: number) {
 
   let state = getPldState();
   const diverts = getEeState().diverts;
-  while (getImage($location`The Purple Light District`) < 10 && !mustStop(stopTurncount)) {
+  while (!mustStop(stopTurncount)) {
     const maxFights = FREE_RUN_PLD ? 34 : 25;
     const tryFreeRun = state.fights < maxFights;
     setChoice(223, diverts + state.flimflams < 21 ? 3 : 1);
@@ -57,18 +57,28 @@ export function doPld(stopTurncount: number) {
     const turnsEstimate = Math.max(0, maxFights - state.fights) + Math.max(0, 18 - state.kills);
     const location = $location`The Purple Light District`;
     moodPlusCombat(expectedTurns(stopTurncount), turnsEstimate);
-    const { freeRun, familiarLocked } = maximizeFreeRuns('+combat', [], usualDropItems, [], tryFreeRun);
-    preAdventure(location, freeRun, familiarLocked, GOAL_PLUS_COMBAT);
-    if (!freeRun) moodAddItem();
-    adventureRunOrStasis(location, freeRun);
+    const manager = new AdventuringManager(
+      $location`The Purple Light District`,
+      PrimaryGoal.PLUS_COMBAT,
+      [],
+      usualDropItems
+    );
+    if (tryFreeRun) manager.setupFreeRuns();
+    manager.preAdventure();
+    adventureRunOrStasis(location, manager.willFreeRun);
 
     state = getPldState();
     print('Diverts: ' + diverts);
     print('Flimflams: ' + state.flimflams);
     print('Fights: ' + state.fights);
-    print('Image: ' + getImage($location`The Purple Light District`));
+    print('Image (approx): ' + getImagePld());
+
+    if (!lastWasCombat() && lastChoice() === 205) {
+      break;
+    }
   }
-  if (getImage($location`The Purple Light District`) >= 10) {
+
+  if (getImagePld.forceUpdate() >= 10) {
     print('At Chester.');
   }
 }

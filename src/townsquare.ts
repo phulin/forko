@@ -19,10 +19,10 @@ import {
   setChoice,
   getImage,
   extractInt,
-  preAdventure,
-  maximizeCached,
   memoizeTurncount,
   usualDropItems,
+  AdventuringManager,
+  PrimaryGoal,
 } from './lib';
 import { moodBaseline } from './mood';
 
@@ -74,7 +74,6 @@ const currentParts = memoizeTurncount(() => {
     const partRe = new RegExp('<b>(a|[0-9]+)</b> ' + part.regex.source, 'g');
     result.set(part, extractInt(partRe, text));
   }
-  for (const [key, value] of result) print(`${key.name}: ${value}`);
   return result;
 });
 
@@ -99,7 +98,7 @@ function getParts(part: HoboPart, desiredParts: number, stopTurncount: number) {
     }
     Macro.stasis()
       .skill($skill`Stuffed Mortar Shell`)
-      .skill($skill`Cannelloni Cannon`)
+      .skillRepeat($skill`Cannelloni Cannon`)
       .setAutoAttack();
   } else if (part.type === PartType.HOT) {
     Macro.stasis()
@@ -111,9 +110,13 @@ function getParts(part: HoboPart, desiredParts: number, stopTurncount: number) {
       .setAutoAttack();
   }
   while ((currentParts().get(part) as number) < desiredParts && !pldAccessible() && !mustStop(stopTurncount)) {
-    maximizeCached(['familiar weight', '-0.1 ml 0 min'], usualDropItems);
-    preAdventure($location`Hobopolis Town Square`, false, false);
-    maximizeCached(['familiar weight', '-0.1 ml 0 min'], usualDropItems);
+    const manager = new AdventuringManager(
+      $location`Hobopolis Town Square`,
+      PrimaryGoal.NONE,
+      ['familiar weight', '-0.05 ml 0 min'],
+      usualDropItems
+    );
+    manager.preAdventure();
     adventureMacro($location`Hobopolis Town Square`, Macro.abort());
   }
 }

@@ -11,12 +11,12 @@ import {
 import { $item, $location } from 'libram/src';
 import { adventureRunOrStasis } from './combat';
 import {
+  AdventuringManager,
   extractInt,
-  GOAL_MINUS_COMBAT,
-  maximizeFreeRuns,
+  getChoice,
   memoizeTurncount,
   mustStop,
-  preAdventure,
+  PrimaryGoal,
   setChoice,
   usualDropItems,
 } from './lib';
@@ -66,13 +66,16 @@ export function doSewers(stopTurncount: number) {
       if (state.grates + state.valves >= 32) setChoice(199, 1); // Take tunnel on useless ladder NC.
 
       const maxTurnsEstimate = 150 - (state.grates + state.valves) * 3.2;
+      const anyTunnel = [197, 198, 199].some((adv: number) => getChoice(adv) === 1);
+      const equips = anyTunnel ? [$item`hobo code binder`, ...usualDropItems] : usualDropItems;
 
       const location = $location`A Maze of Sewer Tunnels`;
       moodMinusCombat(expectedTurns(stopTurncount), maxTurnsEstimate);
-      const { freeRun, familiarLocked } = maximizeFreeRuns('-combat', [], [$item`hobo code binder`, ...usualDropItems]);
-      preAdventure(location, freeRun, familiarLocked, GOAL_MINUS_COMBAT);
-      if (!freeRun) moodAddItem();
-      adventureRunOrStasis(location, freeRun);
+      const manager = new AdventuringManager($location`A Maze of Sewer Tunnels`, PrimaryGoal.MINUS_COMBAT, [], equips);
+      manager.setupFreeRuns();
+      manager.preAdventure();
+      if (!manager.willFreeRun) moodAddItem();
+      adventureRunOrStasis(location, manager.willFreeRun);
 
       state = getSewersState();
       print(`Opened ${state.grates} grates, turned ${state.valves} valves.`);

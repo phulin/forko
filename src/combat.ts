@@ -227,9 +227,12 @@ export class Macro {
   kill() {
     return this.externalIf(myInebriety() > inebrietyLimit(), 'attack')
       .mIf(Macro.monster($monster`sleaze hobo`), Macro.skillRepeat($skill`Saucegeyser`))
-      .skill($skill`Shattering Punch`)
-      .skill($skill`Gingerbread Mob Hit`)
-      .skill($skill`Chest X-Ray`)
+      .mIf(
+        '!monstername "witchess" && !monstername "sausage goblin" && !monstername "black crayon"',
+        Macro.skill($skill`Shattering Punch`)
+          .skill($skill`Gingerbread Mob Hit`)
+          .skill($skill`Chest X-Ray`)
+      )
       .skill($skill`Lunging Thrust-Smack`)
       .skill($skill`Lunging Thrust-Smack`)
       .skill($skill`Lunging Thrust-Smack`)

@@ -11,9 +11,9 @@ import {
   extractInt,
   getImageAhbg,
   wrapMain,
-  maximizeCached,
-  preAdventure,
   usualDropItems,
+  PrimaryGoal,
+  AdventuringManager,
 } from './lib';
 import { expectedTurns, moodBaseline, moodMinusCombat } from './mood';
 
@@ -51,7 +51,8 @@ export function doAhbg(stopTurncount: number) {
   }
 
   while (state.image < 10 && !mustStop(stopTurncount)) {
-    let maximizeGoal = '-combat';
+    let primaryGoal = PrimaryGoal.MINUS_COMBAT;
+    let auxiliaryGoals: string[] = [];
     if (state.watched + state.dances < 5 * state.flimflams && state.dances < 21) {
       if (state.image * 2 > state.watched + state.dances) {
         moodMinusCombat(expectedTurns(stopTurncount), 100);
@@ -61,14 +62,19 @@ export function doAhbg(stopTurncount: number) {
       setChoice(222, 1);
     } else {
       moodBaseline(expectedTurns(stopTurncount));
-      maximizeGoal = 'familiar weight';
+      primaryGoal = PrimaryGoal.NONE;
+      auxiliaryGoals = ['familiar weight'];
       setChoice(222, 2);
     }
     setChoice(208, getPropertyInt('minehobo_ahbgNcsUntilFlowers', 0) <= 0 ? 1 : 2);
 
-    maximizeCached([maximizeGoal], usualDropItems);
-    preAdventure($location`The Ancient Hobo Burial Ground`);
-    maximizeCached([maximizeGoal], usualDropItems);
+    const manager = new AdventuringManager(
+      $location`The Ancient Hobo Burial Ground`,
+      primaryGoal,
+      auxiliaryGoals,
+      usualDropItems
+    );
+    manager.preAdventure();
     adventureMacro($location`The Ancient Hobo Burial Ground`, Macro.abort());
 
     if (!lastWasCombat()) {
@@ -92,7 +98,7 @@ export function doAhbg(stopTurncount: number) {
     print(`Until flowers: ${getPropertyInt('minehobo_ahbgNcsUntilFlowers')}`);
   }
 
-  if (getImageAhbg(0)) {
+  if (getImageAhbg.forceUpdate() === 10) {
     setPropertyInt('minehobo_ahbgNcsUntilFlowers', 0);
     print('At Zombo. AHBG complete!');
   }

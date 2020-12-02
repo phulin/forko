@@ -7,10 +7,10 @@ import {
   mustStop,
   stopAt,
   extractInt,
-  maximizeCached,
-  preAdventure,
   usualDropItems,
   wrapMain,
+  AdventuringManager,
+  PrimaryGoal,
 } from './lib';
 import { expectedTurns, moodMinusCombat } from './mood';
 
@@ -77,9 +77,8 @@ export function doBb(stopTurncount: number) {
     }
 
     moodMinusCombat(expectedTurns(stopTurncount), Math.max(2.1 * (100 - state.tiresTotal), 1), maxPricePerTurn);
-    maximizeCached(['-combat'], usualDropItems);
-    preAdventure($location`Burnbarrel Blvd.`, false, false);
-    maximizeCached(['-combat'], usualDropItems);
+    const manager = new AdventuringManager($location`Burnbarrel Blvd.`, PrimaryGoal.MINUS_COMBAT, [], usualDropItems);
+    manager.preAdventure();
     adventureMacro($location`Burnbarrel Blvd.`, Macro.abort());
 
     state = getBbState();

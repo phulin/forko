@@ -15,14 +15,14 @@ import {
   mustStop,
   setChoice,
   getImage,
-  preAdventure,
-  maximizeCached,
   usualDropItems,
   stopAt,
   wrapMain,
   extractInt,
   lastWasCombat,
   clamp,
+  AdventuringManager,
+  PrimaryGoal,
 } from './lib';
 import { expectedTurns, moodMinusCombat } from './mood';
 
@@ -127,9 +127,13 @@ export function doEe(stopTurncount: number, pass: number) {
 
       const estimatedTurns = 2 * (ICICLE_COUNT - state.icicles) + state.image * 10;
       moodMinusCombat(expectedTurns(stopTurncount), clamp(estimatedTurns, 0, 300));
-      maximizeCached(['-combat'], usualDropItems);
-      preAdventure($location`Exposure Esplanade`);
-      maximizeCached(['-combat'], usualDropItems);
+      const manager = new AdventuringManager(
+        $location`Exposure Esplanade`,
+        PrimaryGoal.MINUS_COMBAT,
+        [],
+        usualDropItems
+      );
+      manager.preAdventure();
       adventureMacro($location`Exposure Esplanade`, Macro.abort());
 
       if (!lastWasCombat()) {

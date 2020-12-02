@@ -88,6 +88,10 @@ export function setChoice(adv: number, choice: number) {
   setProperty(`choiceAdventure${adv}`, `${choice}`);
 }
 
+export function getChoice(adv: number) {
+  return getPropertyInt(`choiceAdventure${adv}`);
+}
+
 function has(itemOrSkill: Item | Skill) {
   if (itemOrSkill instanceof Item) {
     return availableAmount(itemOrSkill as Item) > 0;
@@ -128,22 +132,23 @@ export function getItem(qty: number, item: Item, maxPrice: number) {
   if (buy(remaining, item, maxPrice) < remaining) abort(`Mall price too high for ${item.name}.`);
 }
 
-const SAUSAGE_GOBLIN_GOAL = 14;
-export function maximizeCached(maximizeGoals: string[], forceEquip: Item[], banned: Item[] = []) {
-  banned = [...banned, ...$items`Pigsticker of Violence, porcelain porkpie`];
-
-  if (myInebriety() > inebrietyLimit()) {
-    forceEquip = [...forceEquip, $item`Drunkula's wineglass`];
-    maximizeGoals = [...maximizeGoals, '0.01 weapon damage'];
-  } else if (getPropertyInt('_sausageFights') < SAUSAGE_GOBLIN_GOAL && !forceEquip.includes($item`hobo code binder`)) {
-    forceEquip = [...forceEquip, $item`Kramco Sausage-o-Matic™`];
+export function sausageMp(target: number) {
+  if (
+    myMp() < target &&
+    myMaxmp() >= 400 &&
+    getPropertyInt('_sausagesEaten') < 23 &&
+    availableAmount($item`magical sausage casing`) > 0
+  ) {
+    eat(1, Item.get('magical sausage'));
   }
+}
 
-  const objective = [
-    ...maximizeGoals,
-    ...forceEquip.map(it => `equip ${it}`),
-    ...banned.map(it => `-equip ${it}`),
-  ].join(', ');
+export function myFamiliarWeight(familiar: Familiar | null = null) {
+  if (familiar === null) familiar = myFamiliar();
+  return familiarWeight(familiar) + weightAdjustment();
+}
+
+export function maximizeCached(objective: string) {
   const objectiveChanged = getPropertyString('minehobo_lastObjective', '') !== objective;
 
   let oldStats = getPropertyString('minehobo_lastStats', '0,0,0')
@@ -167,22 +172,6 @@ export function maximizeCached(maximizeGoals: string[], forceEquip: Item[], bann
   }
 }
 
-export function sausageMp(target: number) {
-  if (
-    myMp() < target &&
-    myMaxmp() >= 400 &&
-    getPropertyInt('_sausagesEaten') < 23 &&
-    availableAmount($item`magical sausage casing`) > 0
-  ) {
-    eat(1, Item.get('magical sausage'));
-  }
-}
-
-export function myFamiliarWeight(familiar: Familiar | null = null) {
-  if (familiar === null) familiar = myFamiliar();
-  return familiarWeight(familiar) + weightAdjustment();
-}
-
 function exclude(haystack: Item[], needles: Item[]) {
   return haystack.filter(x => !needles.includes(x));
 }
@@ -190,7 +179,6 @@ function exclude(haystack: Item[], needles: Item[]) {
 const freeRunSources = [
   ['_reflexHammerUsed', 3, $item`Lil' Doctor™ bag`],
   ['_kgbTranquilizerDartUses', 3, $item`Kremlin's Greatest Briefcase`],
-  ['_latteRefillsUsed', 3, $item`latte lovers member's mug`],
   ['_snokebombUsed', 3, $skill`Snokebomb`],
 ];
 const freeRunItems = $items`Louder Than Bomb, tattered scrap of paper, GOTO, green smoke bomb`;
@@ -200,59 +188,6 @@ for (const testFam of $familiars`Pair of Stomping Boots, Frumious Bandersnatch`)
 }
 const turnOnlyItems = $items`mafia thumb ring`;
 export const usualDropItems = $items`lucky gold ring, Mr. Cheeng's spectacles, mafia thumb ring`;
-export function maximizeFreeRuns(
-  primaryGoal: string,
-  otherGoals: string[],
-  forceEquip: Item[],
-  banned: Item[] = [],
-  tryFreeRun = true
-) {
-  if (!tryFreeRun) {
-    maximizeCached([primaryGoal, ...otherGoals], forceEquip, banned);
-    return { familiarLocked: false, freeRun: false };
-  }
-
-  if (getPropertyBoolean('_minehobo_freeRunFamiliarUsed', false) && freeRunFamiliar !== $familiar`none`) {
-    maximizeCached(['familiar weight', ...otherGoals], exclude(forceEquip, turnOnlyItems), banned);
-    useFamiliar(freeRunFamiliar);
-    if (getPropertyInt('_banderRunaways') * 5 < myFamiliarWeight() && tryEnsureSong($skill`The Ode to Booze`)) {
-      return { familiarLocked: true, freeRun: true };
-    }
-    // fall through if we've used all our familiar runs.
-    setProperty('_minehobo_freeRunFamiliarUsed', 'true');
-  }
-
-  if (myInebriety() > inebrietyLimit()) {
-    maximizeCached([primaryGoal, ...otherGoals], forceEquip, banned);
-    return { familiarLocked: false, freeRun: false };
-  }
-
-  const additionalEquip: Item[] = [];
-  let limitedFreeRuns = false;
-  for (const [pref, maxCount, itemOrSkill] of freeRunSources) {
-    if (getPropertyInt(pref as string) < maxCount && has(itemOrSkill as Item | Skill)) {
-      if (itemOrSkill instanceof Item) additionalEquip.push(itemOrSkill as Item);
-      if (itemOrSkill instanceof Skill) sausageMp(mpCost(itemOrSkill as Skill));
-      if (itemOrSkill === $item`latte lovers member's mug` && getPropertyBoolean('_latteBanishUsed')) {
-        cliExecute(`latte refill cinnamon pumpkin ${getProperty('latteUnlocks').includes('ink') ? 'ink' : 'vanilla'}`);
-      }
-      limitedFreeRuns = true;
-      break;
-    }
-  }
-  if (
-    getCampground()['Asdon Martin keyfob'] !== undefined &&
-    !getProperty('banishedMonsters').includes('Spring-Loaded Front Bumper')
-  ) {
-    if (getFuel() < 50) {
-      fillAsdonMartinTo(100);
-    }
-    limitedFreeRuns = true;
-  }
-  if (limitedFreeRuns) forceEquip = exclude(forceEquip, turnOnlyItems);
-  maximizeCached([primaryGoal, ...otherGoals], forceEquip, banned);
-  return { familiarLocked: false, freeRun: limitedFreeRuns || freeRunItems.some((it: Item) => itemAmount(it) > 0) };
-}
 
 function averagePrice(items: Item[]) {
   return items.reduce((s, it) => s + mallPrice(it), 0) / items.length;
@@ -306,69 +241,212 @@ const rotatingFamiliars: { [index: string]: { expected: number[]; drop: Item; pr
 };
 
 const mimicDropValue = averagePrice($items`Polka Pop, BitterSweetTarts, Piddles`) / (6.29 * 0.95 + 1 * 0.05);
-export const GOAL_NONE = Symbol('none');
-export const GOAL_PLUS_COMBAT = Symbol('+combat');
-export const GOAL_MINUS_COMBAT = Symbol('-combat');
-export function pickFamiliar(location: Location, freeRun: boolean, goal = GOAL_NONE) {
-  let pickedFamiliar: Familiar | null = null;
-  if (freeRun) {
-    if (goal === GOAL_MINUS_COMBAT && myFamiliarWeight($familiar`Disgeist`) >= 38) {
-      pickedFamiliar = $familiar`Disgeist`;
-    } else if (goal === GOAL_PLUS_COMBAT && myFamiliarWeight($familiar`Jumpsuited Hound Dog`) >= 30) {
-      pickedFamiliar = $familiar`Jumpsuited Hound Dog`;
-    } else if (
-      !$locations`A Maze of Sewer Tunnels, Hobopolis Town Square`.includes(location) &&
-      haveFamiliar($familiar`Space Jellyfish`)
-    ) {
-      pickedFamiliar = $familiar`Space Jellyfish`;
-    } else if (getPropertyInt('_gothKidFights') < 7) {
-      pickedFamiliar = $familiar`Artistic Goth Kid`;
-    }
-    // TODO: Could include LHM here, but difficult
-  }
+export enum PrimaryGoal {
+  NONE,
+  PLUS_COMBAT,
+  MINUS_COMBAT,
+}
+const primaryGoalToMaximizer = new Map<PrimaryGoal, string[]>([
+  [PrimaryGoal.NONE, []],
+  [PrimaryGoal.PLUS_COMBAT, ['+combat']],
+  [PrimaryGoal.MINUS_COMBAT, ['-combat']],
+]);
 
-  if (pickedFamiliar === null) {
-    const mimicWeight = myFamiliarWeight($familiar`Stocking Mimic`);
-    const actionPercentage = 1 / 3 + (haveEffect($effect`Jingle Jangle Jingle`) ? 0.1 : 0);
-    const mimicValue = mimicDropValue + ((mimicWeight * actionPercentage * 1) / 4) * 10 * 4 * 1.2;
-
-    const familiarValue: [Familiar, number][] = [[$familiar`Stocking Mimic`, mimicValue]];
-    for (const familiarName of Object.keys(rotatingFamiliars)) {
-      const familiar: Familiar = Familiar.get(familiarName);
-      const { expected, drop, pref } = rotatingFamiliars[familiarName];
-      const dropsAlready = getPropertyInt(pref);
-      if (dropsAlready >= expected.length) continue;
-      const value = mallPrice(drop) / expected[dropsAlready];
-      familiarValue.push([familiar, value]);
-    }
-    pickedFamiliar = argmax(familiarValue) as Familiar;
-  }
-  useFamiliar(pickedFamiliar);
-  if (pickedFamiliar === $familiar`Stocking Mimic`) {
-    equip($item`bag of many confections`);
-    maybeFeedMimic();
-  }
-  if (getProperty('minehobo_lastPickedFamiliar') !== `${pickedFamiliar}`) {
-    print(`Picked familiar ${myFamiliar()}.`, 'blue');
-    setProperty('minehobo_lastPickedFamiliar', `${pickedFamiliar}`);
-  }
+export function renderObjective(
+  primaryGoal: PrimaryGoal,
+  auxiliaryGoals: string[],
+  forceEquip: Item[] = [],
+  banned: Item[] = []
+) {
+  return [
+    ...(primaryGoalToMaximizer.get(primaryGoal) || []),
+    ...auxiliaryGoals,
+    ...forceEquip.map((item: Item) => `equip ${item}`),
+    ...banned.map((item: Item) => `-equip ${item}`),
+  ].join(', ');
 }
 
-export function preAdventure(location: Location, freeRun = false, familiarLocked = false, goal = GOAL_NONE) {
-  if (haveEffect($effect`Beaten Up`) > 0) {
-    throw 'Got beaten up.';
+const SAUSAGE_GOBLIN_GOAL = 14;
+export class AdventuringManager {
+  static lastFamiliar: Familiar | null = null;
+
+  location: Location;
+  primaryGoal: PrimaryGoal;
+  auxiliaryGoals: string[];
+  forceEquip: Item[] = [];
+  banned: Item[] = [];
+  willFreeRun = false;
+  familiarLocked = false;
+
+  constructor(
+    location: Location,
+    primaryGoal: PrimaryGoal,
+    auxiliaryGoals: string[],
+    forceEquip: Item[] = [],
+    banned: Item[] = []
+  ) {
+    this.location = location;
+    this.primaryGoal = primaryGoal;
+    this.auxiliaryGoals = auxiliaryGoals;
+    this.forceEquip = forceEquip;
+    this.banned = banned;
+
+    if (myInebriety() > inebrietyLimit()) {
+      forceEquip = [...forceEquip, $item`Drunkula's wineglass`];
+      auxiliaryGoals = [...auxiliaryGoals, '0.01 weapon damage'];
+    } else if (
+      getPropertyInt('_sausageFights') < SAUSAGE_GOBLIN_GOAL &&
+      !forceEquip.includes($item`hobo code binder`) // AND probability is reasonably high.
+    ) {
+      forceEquip = [...forceEquip, $item`Kramco Sausage-o-Matic™`];
+    }
+    banned = [...banned, ...$items`Pigsticker of Violence, porcelain porkpie`];
   }
 
-  sausageMp(100);
-  if (myMp() < 100) restoreMp(100);
-  if (myHp() < 0.8 * myMaxhp() || myHp() < 500) restoreHp(myMaxhp());
-  if (!familiarLocked) pickFamiliar(location, freeRun, goal);
-  for (const item of $items`hobo nickel, sand dollar`) {
-    if (itemAmount(item) > 0) {
-      putCloset(itemAmount(item), item);
+  limitedFreeRunsAvailable() {
+    const additionalEquip: Item[] = [];
+    if (
+      getCampground()['Asdon Martin keyfob'] !== undefined &&
+      !getProperty('banishedMonsters').includes('Spring-Loaded Front Bumper')
+    ) {
+      if (getFuel() < 50) {
+        fillAsdonMartinTo(100);
+      }
+      return { limitedFreeRuns: true, additionalEquip };
+    }
+
+    for (const [pref, maxCount, itemOrSkill] of freeRunSources) {
+      if (getPropertyInt(pref as string) < maxCount && has(itemOrSkill as Item | Skill)) {
+        if (itemOrSkill instanceof Item) additionalEquip.push(itemOrSkill as Item);
+        if (itemOrSkill instanceof Skill) sausageMp(mpCost(itemOrSkill as Skill));
+        return { limitedFreeRuns: true, additionalEquip };
+      }
+    }
+
+    const hasInk = getProperty('latteUnlocks').includes('ink');
+    if (
+      availableAmount($item`latte lovers member's mug`) > 0 &&
+      hasInk &&
+      !this.forceEquip.includes($item`hobo code binder`) &&
+      (getPropertyBoolean('_latteBanishUsed') ? 0 : 1) + getPropertyInt('_latteRefills') < 4
+    ) {
+      if (getPropertyBoolean('_latteBanishUsed')) {
+        cliExecute('latte refill cinnamon pumpkin ink');
+      }
+      additionalEquip.push($item`latte lovers member's mug`);
+    }
+
+    return { limitedFreeRuns: false, additionalEquip };
+  }
+
+  setupFreeRuns() {
+    if (getPropertyBoolean('_minehobo_freeRunFamiliarUsed', false) && freeRunFamiliar !== $familiar`none`) {
+      maximizeCached(
+        renderObjective(
+          PrimaryGoal.NONE,
+          ['familiar weight', ...this.auxiliaryGoals],
+          exclude(this.forceEquip, turnOnlyItems),
+          this.banned
+        )
+      );
+      useFamiliar(freeRunFamiliar);
+      if (getPropertyInt('_banderRunaways') * 5 < myFamiliarWeight() && tryEnsureSong($skill`The Ode to Booze`)) {
+        this.primaryGoal = PrimaryGoal.NONE;
+        this.auxiliaryGoals = ['familiar weight', ...this.auxiliaryGoals];
+        this.forceEquip = exclude(this.forceEquip, turnOnlyItems);
+        this.familiarLocked = true;
+        this.willFreeRun = true;
+        return;
+      }
+      // fall through if we've used all our familiar runs.
+      setProperty('_minehobo_freeRunFamiliarUsed', 'true');
+    }
+
+    if (myInebriety() > inebrietyLimit()) {
+      this.familiarLocked = false;
+      this.willFreeRun = false;
+      return;
+    }
+
+    const { limitedFreeRuns, additionalEquip } = this.limitedFreeRunsAvailable();
+
+    this.familiarLocked = false;
+    this.willFreeRun = limitedFreeRuns || freeRunItems.some((it: Item) => itemAmount(it) > 0);
+    if (this.willFreeRun) this.forceEquip = [...exclude(this.forceEquip, turnOnlyItems), ...additionalEquip];
+  }
+
+  pickFamiliar() {
+    let pickedFamiliar: Familiar | null = null;
+    if (this.willFreeRun) {
+      if (this.primaryGoal === PrimaryGoal.MINUS_COMBAT && myFamiliarWeight($familiar`Disgeist`) >= 38) {
+        pickedFamiliar = $familiar`Disgeist`;
+      } else if (
+        this.primaryGoal === PrimaryGoal.PLUS_COMBAT &&
+        myFamiliarWeight($familiar`Jumpsuited Hound Dog`) >= 30
+      ) {
+        pickedFamiliar = $familiar`Jumpsuited Hound Dog`;
+      } else if (
+        !$locations`A Maze of Sewer Tunnels, Hobopolis Town Square`.includes(this.location) &&
+        haveFamiliar($familiar`Space Jellyfish`)
+      ) {
+        pickedFamiliar = $familiar`Space Jellyfish`;
+      } else if (getPropertyInt('_gothKidFights') < 7) {
+        pickedFamiliar = $familiar`Artistic Goth Kid`;
+      }
+      // TODO: Could include LHM here, but difficult
+    }
+
+    if (pickedFamiliar === null) {
+      const mimicWeight = myFamiliarWeight($familiar`Stocking Mimic`);
+      const actionPercentage = 1 / 3 + (haveEffect($effect`Jingle Jangle Jingle`) ? 0.1 : 0);
+      const mimicValue = mimicDropValue + ((mimicWeight * actionPercentage * 1) / 4) * 10 * 4 * 1.2;
+
+      const familiarValue: [Familiar, number][] = [[$familiar`Stocking Mimic`, mimicValue]];
+      for (const familiarName of Object.keys(rotatingFamiliars)) {
+        const familiar: Familiar = Familiar.get(familiarName);
+        if (this.location === $location`Hobopolis Town Square` && familiar === $familiar`Fist Turkey`) continue;
+        const { expected, drop, pref } = rotatingFamiliars[familiarName];
+        const dropsAlready = getPropertyInt(pref);
+        if (dropsAlready >= expected.length) continue;
+        const value = mallPrice(drop) / expected[dropsAlready];
+        familiarValue.push([familiar, value]);
+      }
+      pickedFamiliar = argmax(familiarValue) as Familiar;
+    }
+    useFamiliar(pickedFamiliar);
+    if (pickedFamiliar === $familiar`Stocking Mimic`) {
+      equip($item`bag of many confections`);
+      maybeFeedMimic();
+    }
+    if (AdventuringManager.lastFamiliar !== pickedFamiliar) {
+      print(`Picked familiar ${myFamiliar()}.`, 'blue');
+      AdventuringManager.lastFamiliar = pickedFamiliar;
     }
   }
-  // TODO: Check SR.
+
+  // Restore, maximize, pick familiar.
+  preAdventure() {
+    if (haveEffect($effect`Beaten Up`) > 0) {
+      throw 'Got beaten up.';
+    }
+
+    maximizeCached(renderObjective(this.primaryGoal, this.auxiliaryGoals, this.forceEquip, this.banned));
+
+    sausageMp(100);
+    if (myMp() < 100) restoreMp(100);
+    if (myHp() < 0.8 * myMaxhp() || myHp() < 500) restoreHp(myMaxhp());
+
+    if (!this.familiarLocked) this.pickFamiliar();
+    for (const item of $items`hobo nickel, sand dollar`) {
+      if (itemAmount(item) > 0) {
+        putCloset(itemAmount(item), item);
+      }
+    }
+
+    maximizeCached(renderObjective(this.primaryGoal, this.auxiliaryGoals, this.forceEquip, this.banned));
+
+    // TODO: Check SR.
+  }
 }
 
 export function lastWasCombat() {
@@ -376,9 +454,9 @@ export function lastWasCombat() {
 }
 
 export function unclosetNickels() {
-  /*for (const item of $items`hobo nickel, sand dollar`) {
+  for (const item of $items`hobo nickel, sand dollar`) {
     takeCloset(closetAmount(item), item);
-  }*/
+  }
 }
 
 export function stopAt(args: string) {
@@ -465,14 +543,16 @@ export function getImage(location: Location) {
 }
 
 const memoizeStore = new Map<() => unknown, [number, unknown]>();
-export function memoizeTurncount<T>(func: (...args: []) => T, defaultTurnThreshold = 1) {
+export function memoizeTurncount<T>(func: (...args: []) => T, turnThreshold = 1) {
   const forceUpdate = (...args: []) => {
-    return memoizeStore.set(func, [myTurncount(), func(...args)]);
+    const result = func(...args);
+    memoizeStore.set(func, [myTurncount(), result]);
+    return result;
   };
   const result = (...args: []) => {
     const [lastTurncount, lastResult] = memoizeStore.get(func) || [-1, null];
-    if (myTurncount() >= lastTurncount + defaultTurnThreshold) {
-      return (forceUpdate(...args).get(func) || [-1, null])[1] as T;
+    if (myTurncount() >= lastTurncount + turnThreshold) {
+      return forceUpdate(...args);
     } else {
       return lastResult as T;
     }

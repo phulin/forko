@@ -1,40 +1,48 @@
-import { print, lastChoice, visitUrl } from 'kolmafia';
-import { $location } from 'libram/src';
+import { print, lastChoice, visitUrl, lastMonster, myTurncount } from 'kolmafia';
+import { $location, $monster } from 'libram/src';
 import { adventureMacro, Macro } from './combat';
 import {
   getPropertyInt,
-  getImage,
   setChoice,
   mustStop,
   lastWasCombat,
   setPropertyInt,
   extractInt,
   clamp,
-  maximizeCached,
-  preAdventure,
   usualDropItems,
   stopAt,
   wrapMain,
-  GOAL_MINUS_COMBAT,
   getImageHeap,
+  AdventuringManager,
+  PrimaryGoal,
 } from './lib';
 import { expectedTurns, moodMinusCombat } from './mood';
 
-function estimateRemaining() {
+class HeapState {
+  defeated = 0;
+  trashcanos = 0;
+}
+function getHeapState() {
+  const result = new HeapState();
   const logText = visitUrl('clan_raidlogs.php');
-  const defeated = extractInt(/defeated +Stench hobo x ([0-9]+)/g, logText);
-  const trashcanos = extractInt(/started ([0-9]+) trashcano/g, logText);
-  return 500 - (defeated + trashcanos * 5);
+  result.defeated = extractInt(/defeated +Stench hobo x ([0-9]+)/g, logText);
+  result.trashcanos = extractInt(/started ([0-9]+) trashcano/g, logText);
+  return result;
+}
+
+function estimateRemaining(heapState: HeapState) {
+  return 500 - (heapState.defeated + heapState.trashcanos * 5);
 }
 
 // const FREE_RUN_HEAP = false;
 export function doHeap(stopTurncount: number) {
-  if (getImage($location`The Heap`) >= 10) {
+  if (getImageHeap() >= 10) {
+    setPropertyInt('minehobo_heapNcsUntilCompost', 0);
     print('At Oscus. Heap complete!');
     return;
   }
 
-  setChoice(203, 0); // Show Oscus in browser
+  setChoice(203, 2); // Show Oscus in browser
   setChoice(214, 1); // Trashcano
   setChoice(218, 1); // I Refuse!
   setChoice(295, 1); // Take SR
@@ -43,32 +51,41 @@ export function doHeap(stopTurncount: number) {
 
   Macro.stasis().kill().setAutoAttack();
 
-  while (getImage($location`The Heap`) < 10 && !mustStop(stopTurncount)) {
+  let state = getHeapState();
+
+  while (!mustStop(stopTurncount)) {
     print('NCS until we compost: ' + getPropertyInt('minehobo_heapNcsUntilCompost', 0));
     print('Image (approx): ' + getImageHeap());
 
     setChoice(216, getPropertyInt('minehobo_heapNcsUntilCompost', 0) <= 0 ? 1 : 2);
 
-    const estimatedTurns = estimateRemaining() / 1.9;
+    const estimatedTurns = estimateRemaining(state) / 1.9;
     moodMinusCombat(expectedTurns(stopTurncount), clamp(estimatedTurns, 0, 300));
-    maximizeCached(['-combat'], usualDropItems);
-    preAdventure($location`The Heap`, false, false, GOAL_MINUS_COMBAT);
-    maximizeCached(['-combat'], usualDropItems);
+    const manager = new AdventuringManager($location`The Heap`, PrimaryGoal.MINUS_COMBAT, [], usualDropItems);
+    manager.preAdventure();
     adventureMacro($location`The Heap`, Macro.abort());
 
-    if (!lastWasCombat()) {
+    if (lastWasCombat() && lastMonster() === $monster`stench hobo`) {
+      state.defeated += 1;
+    } else {
       if (lastChoice() === 216) {
         if (getPropertyInt('minehobo_heapNcsUntilCompost', 0) <= 0) {
           // We just composted.
           setPropertyInt('minehobo_heapNcsUntilCompost', 5);
         }
-      } else {
+      } else if (lastChoice() === 203) {
+        break;
+      } else if ([214, 218].includes(lastChoice())) {
         // Some other choice adventure is filling the queue.
         setPropertyInt('minehobo_heapNcsUntilCompost', getPropertyInt('minehobo_heapNcsUntilCompost', 0) - 1);
+        if (lastChoice() === 214) state.trashcanos += 1;
       }
     }
+
+    if (myTurncount() % 20 === 0) state = getHeapState();
   }
-  if (getImage($location`The Heap`) === 10) {
+
+  if (getImageHeap() === 10) {
     // Reset for next instance once we find Oscus.
     setPropertyInt('minehobo_heapNcsUntilCompost', 0);
     print('At Oscus. Heap complete!');
