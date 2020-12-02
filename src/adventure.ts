@@ -53,7 +53,7 @@ function has(itemOrSkill: Item | Skill) {
     return availableAmount(itemOrSkill as Item) > 0;
   } else if (itemOrSkill instanceof Skill) {
     return haveSkill(itemOrSkill as Skill);
-  }
+  } else return false;
 }
 
 export function maximizeCached(objective: string) {
@@ -94,9 +94,10 @@ let freeRunFamiliar = $familiar`none`;
 for (const testFam of $familiars`Pair of Stomping Boots, Frumious Bandersnatch`) {
   if (haveFamiliar(testFam)) freeRunFamiliar = testFam;
 }
-const turnOnlyItems = $items`mafia thumb ring`;
 
 export const usualDropItems = $items`lucky gold ring, Mr. Cheeng's spectacles, mafia thumb ring`;
+const turnOnlyItems = $items`mafia thumb ring`;
+const fightOnlyItems = $items`lucky gold ring, Mr. Cheeng's spectacles, mafia thumb ring`;
 
 export function inSemirareWindow() {
   return getCounters('Semirare window end', 0, 40).includes('Semirare window end');
@@ -123,7 +124,9 @@ function maybeFeedMimic() {
     getPropertyInt('minehobo_lastMimicFeedAscension', 0) < myAscensions() &&
     $familiar`Stocking Mimic`.experience < 600
   ) {
-    const totalCandy = mimicFeedCandy.map((candy: Item) => itemAmount(candy)).reduce((s, x) => s + x, 0);
+    const totalCandy = mimicFeedCandy
+      .map((candy: Item) => itemAmount(candy))
+      .reduce((s: number, x: number) => s + x, 0);
     let remainingCandyToFeed = clamp(totalCandy * 0.03, 0, 800);
     for (const candy of mimicFeedCandy) {
       const toFeed = Math.min(remainingCandyToFeed, itemAmount(candy));
@@ -254,12 +257,12 @@ export class AdventuringManager {
   }
 
   setupFreeRuns() {
-    if (getPropertyBoolean('_minehobo_freeRunFamiliarUsed', false) && freeRunFamiliar !== $familiar`none`) {
+    if (!getPropertyBoolean('_minehobo_freeRunFamiliarUsed', false) && freeRunFamiliar !== $familiar`none`) {
       maximizeCached(
         renderObjective(
           PrimaryGoal.NONE,
           ['familiar weight', ...this.auxiliaryGoals],
-          exclude(this.forceEquip, turnOnlyItems),
+          exclude(this.forceEquip, fightOnlyItems),
           this.banned
         )
       );
@@ -267,7 +270,7 @@ export class AdventuringManager {
       if (getPropertyInt('_banderRunaways') * 5 < myFamiliarWeight() && tryEnsureSong($skill`The Ode to Booze`)) {
         this.primaryGoal = PrimaryGoal.NONE;
         this.auxiliaryGoals = ['familiar weight', ...this.auxiliaryGoals];
-        this.forceEquip = exclude(this.forceEquip, turnOnlyItems);
+        this.forceEquip = exclude(this.forceEquip, fightOnlyItems);
         this.familiarLocked = true;
         this.willFreeRun = true;
         return;
@@ -310,12 +313,23 @@ export class AdventuringManager {
       // TODO: Could include LHM here, but difficult
     }
 
+    if (this.location === $location`The Heap` && getPropertyInt('_macrometeoriteUses') < 10) {
+      pickedFamiliar = $familiar`Space Jellyfish`;
+    }
+
     if (pickedFamiliar === null) {
+      const familiarValue: [Familiar, number][] = [];
+
       const mimicWeight = myFamiliarWeight($familiar`Stocking Mimic`);
       const actionPercentage = 1 / 3 + (haveEffect($effect`Jingle Jangle Jingle`) ? 0.1 : 0);
       const mimicValue = mimicDropValue + ((mimicWeight * actionPercentage * 1) / 4) * 10 * 4 * 1.2;
+      familiarValue.push([$familiar`Stocking Mimic`, mimicValue]);
 
-      const familiarValue: [Familiar, number][] = [[$familiar`Stocking Mimic`, mimicValue]];
+      if (this.location === $location`The Heap`) {
+        const jellyfishValue = mallPrice($item`stench jelly`) * 0.1;
+        familiarValue.push([$familiar`Space Jellyfish`, jellyfishValue]);
+      }
+
       for (const familiarName of Object.keys(rotatingFamiliars)) {
         const familiar: Familiar = Familiar.get(familiarName);
         if (this.location === $location`Hobopolis Town Square` && familiar === $familiar`Fist Turkey`) continue;

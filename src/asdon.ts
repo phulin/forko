@@ -31,10 +31,10 @@ function isFuelItem(it: Item) {
 const potentialFuel = $items``.filter(isFuelItem);
 
 function getBestFuel(targetUnits: number) {
-  const key1 = (it: Item) => -averageAdventures(it);
-  const key2 = (it: Item) => calculateFuelEfficiency(it, targetUnits);
-  potentialFuel.sort((x, y) => key1(x) - key1(y));
-  potentialFuel.sort((x, y) => key2(x) - key2(y));
+  const key1 = (item: Item) => -averageAdventures(item);
+  const key2 = (item: Item) => calculateFuelEfficiency(item, targetUnits);
+  potentialFuel.sort((x: Item, y: Item) => key1(x) - key1(y));
+  potentialFuel.sort((x: Item, y: Item) => key2(x) - key2(y));
 
   return potentialFuel[0];
 }

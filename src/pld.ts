@@ -58,10 +58,10 @@ export function doPld(stopTurncount: number) {
     adventureRunOrStasis(location, manager.willFreeRun);
 
     state = getPldState();
-    print('Diverts: ' + diverts);
-    print('Flimflams: ' + state.flimflams);
-    print('Fights: ' + state.fights);
-    print('Image (approx): ' + getImagePld());
+    print(`Diverts: ${diverts}`);
+    print(`Flimflams: ${state.flimflams}`);
+    print(`Fights: ${state.fights}`);
+    print(`Image (approx): ${getImagePld()}`);
 
     if (!lastWasCombat() && lastChoice() === 205) {
       break;

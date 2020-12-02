@@ -48,10 +48,10 @@ class EEState {
 }
 
 export function printState(state: EEState) {
-  print('Image (approx): ' + state.image);
-  print('Icicles: ' + state.icicles);
-  print('Diverts: ' + state.diverts);
-  print('Flimflams: ' + state.flimflams);
+  print(`Image (approx): ${state.image}`);
+  print(`Icicles: ${state.icicles}`);
+  print(`Diverts: ${state.diverts}`);
+  print(`Flimflams: ${state.flimflams}`);
 }
 
 export function getState(checkImage = true) {

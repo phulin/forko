@@ -28,9 +28,10 @@ import {
   haveFamiliar,
   myInebriety,
   inebrietyLimit,
+  setAutoAttack,
 } from 'kolmafia';
 import { $effect, $familiar, $item, $items, $monster, $skill, $skills } from 'libram/src';
-import { getPropertyInt, myFamiliarWeight } from './lib';
+import { getPropertyInt, myFamiliarWeight, setPropertyInt } from './lib';
 
 // multiFight() stolen from Aenimus: https://github.com/Aenimus/aen_cocoabo_farm/blob/master/scripts/aen_combat.ash.
 // Thanks! Licensed under MIT license.
@@ -56,7 +57,7 @@ export function getMacroId() {
 
 export class Macro {
   static cachedMacroId: number | null = null;
-  static cachedAutoAttack: Macro | null = null;
+  static cachedAutoAttack: string | null = null;
 
   components: string[] = [];
 
@@ -76,19 +77,17 @@ export class Macro {
   submit() {
     const final = this.toString();
     print(`Submitting macro: ${final}`);
-    return visitUrl('fight.php?action=macro&macrotext=' + urlEncode(final), true, true);
+    return visitUrl(`fight.php?action=macro&macrotext=${urlEncode(final)}`, true, true);
   }
 
   setAutoAttack() {
-    if (
-      getAutoAttack() === MACRO_NAME &&
-      Macro.cachedAutoAttack !== null &&
-      this.toString() === Macro.cachedAutoAttack.toString()
-    ) {
+    if (Macro.cachedMacroId === null) Macro.cachedMacroId = getMacroId();
+    if (getAutoAttack() === 99000000 + Macro.cachedMacroId && this.toString() === Macro.cachedAutoAttack) {
       // This macro is already set. Don't make the server request.
       return;
     }
-    if (Macro.cachedMacroId === null) Macro.cachedMacroId = getMacroId();
+
+    print(`Setting autoattack to: ${this.toString()}`);
     visitUrl(
       `account_combatmacros.php?macroid=${Macro.cachedMacroId}&name=${urlEncode(MACRO_NAME)}&macrotext=${urlEncode(
         this.toString()
@@ -96,7 +95,8 @@ export class Macro {
       true,
       true
     );
-    visitUrl(`account.php?am=1&action=autoattack&value=99${Macro.cachedMacroId}&ajax=1`);
+    setAutoAttack(MACRO_NAME);
+    Macro.cachedAutoAttack = this.toString();
   }
 
   abort() {
@@ -248,7 +248,7 @@ export class Macro {
       .skill($skill`Extract`)
       .skill($skill`Extract Jelly`)
       .externalIf(
-        (haveFamiliar($familiar`Frumious Bandersnatch`) && haveEffect($effect`The Ode to Booze`)) ||
+        (haveFamiliar($familiar`Frumious Bandersnatch`) && haveEffect($effect`The Ode to Booze`) > 0) ||
           haveFamiliar($familiar`Pair of Stomping Boots`),
         'runaway'
       )
@@ -287,9 +287,9 @@ function banishedMonsters() {
   const banishedstring = getProperty('banishedMonsters');
   const banishedComponents = banishedstring.split(':');
   const result: { [index: string]: Monster } = {};
-  if (banishedComponents.count() < 3) return result;
-  for (let idx = 0; idx < banishedComponents.count() / 3 - 1; idx++) {
-    const foe = banishedComponents[idx * 3].toMonster();
+  if (banishedComponents.length < 3) return result;
+  for (let idx = 0; idx < banishedComponents.length / 3 - 1; idx++) {
+    const foe = Monster.get(banishedComponents[idx * 3]);
     const banisher = banishedComponents[idx * 3 + 1];
     print(`Banished ${foe.name} using ${banisher}`);
     result[banisher] = foe;
@@ -337,7 +337,7 @@ export function main(initround: number, foe: Monster) {
       const newBattery = getPropertyInt('_powerfulGloveBatteryPowerUsed');
       if (newBattery === originalBattery) {
         print('WARNING: Mafia is not updating PG battery charge.');
-        setProperty('_powerfulGloveBatteryPowerUsed', '' + (newBattery + 10));
+        setProperty('_powerfulGloveBatteryPowerUsed', `${newBattery + 10}`);
       }
       // Hopefully at this point it comes back to the consult script.
     }
@@ -357,7 +357,7 @@ export function main(initround: number, foe: Monster) {
         runaway();
         if (getPropertyInt('_banderRunaways') === banderRunaways) {
           print('WARNING: Mafia is not tracking bander runaways correctly.');
-          setProperty('_banderRunaways', banderRunaways + 1);
+          setPropertyInt('_banderRunaways', banderRunaways + 1);
         }
       } else if (haveSkill(Skill.get('Reflex Hammer')) && getPropertyInt('_reflexHammerUsed') < 3) {
         useSkill(1, Skill.get('Reflex Hammer'));
@@ -367,8 +367,8 @@ export function main(initround: number, foe: Monster) {
         useSkill(1, Skill.get('KGB tranquilizer dart'));
       } else if (myMp() >= 50 && haveSkill(Skill.get('Snokebomb')) && getPropertyInt('_snokebombUsed') < 3) {
         useSkill(1, Skill.get('Snokebomb'));
-      } else if (freeRunItems.some(it => itemAmount(it) > 0)) {
-        Macro.item(freeRunItems.find(it => itemAmount(it) > 0) as Item).repeatSubmit();
+      } else if (freeRunItems.some((item: Item) => itemAmount(item) > 0)) {
+        Macro.item(freeRunItems.find((item: Item) => itemAmount(item) > 0) as Item).repeatSubmit();
       } else {
         // non-free, whatever
         throw "Couldn't find a way to run away for free!";
@@ -383,7 +383,7 @@ export function main(initround: number, foe: Monster) {
 
 export function saberYr() {
   if (!handlingChoice()) throw 'No saber choice?';
-  if (lastChoice() === 1387 && availableChoiceOptions().length > 0) {
+  if (lastChoice() === 1387 && Object.keys(availableChoiceOptions()).length > 0) {
     runChoice(3);
   }
 }

@@ -37,7 +37,7 @@ import { setClan } from './wl';
 
 export function shrug(ef: Effect) {
   if (haveEffect(ef) > 0) {
-    cliExecute('shrug ' + ef.name);
+    cliExecute(`shrug ${ef.name}`);
   }
 }
 // Mechanics for managing song slots.
@@ -172,7 +172,7 @@ export function tryEnsurePotion(item: Item, turns = 1, maxPricePerTurn = 100, ac
 const triviaMaster = $effect`Trivia Master`;
 const triviaMasterItems = $items`Trivial Avocations Card: What?, Trivial Avocations Card: When?, Trivial Avocations Card: Who?, Trivial Avocations Card: Where?`;
 export function tryEnsureTriviaMaster(turns = 1) {
-  if (triviaMasterItems.map(it => mallPrice(it)).reduce((s, x) => s + x, 0) > 3000) {
+  if (triviaMasterItems.map((item: Item) => mallPrice(item)).reduce((s: number, x: number) => s + x, 0) > 3000) {
     return false;
   }
   const triviaMasterTurns = haveEffect(triviaMaster);

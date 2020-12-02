@@ -1,5 +1,5 @@
 import { print, lastChoice, visitUrl, lastMonster, myTurncount } from 'kolmafia';
-import { $location, $monster } from 'libram/src';
+import { $location, $monster, $skill } from 'libram/src';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacro, Macro } from './combat';
 import {
@@ -47,13 +47,11 @@ export function doHeap(stopTurncount: number) {
 
   // const tryFreeRun = FREE_RUN_HEAP && myInebriety() <= inebrietyLimit();
 
-  Macro.stasis().kill().setAutoAttack();
-
   let state = getHeapState();
 
   while (!mustStop(stopTurncount)) {
-    print('NCS until we compost: ' + getPropertyInt('minehobo_heapNcsUntilCompost', 0));
-    print('Image (approx): ' + getImageHeap());
+    print(`NCS until we compost: ${getPropertyInt('minehobo_heapNcsUntilCompost', 0)}`);
+    print(`Image (approx): ${getImageHeap()}`);
 
     setChoice(216, getPropertyInt('minehobo_heapNcsUntilCompost', 0) <= 0 ? 1 : 2);
 
@@ -61,6 +59,15 @@ export function doHeap(stopTurncount: number) {
     moodMinusCombat(expectedTurns(stopTurncount), clamp(estimatedTurns, 0, 300));
     const manager = new AdventuringManager($location`The Heap`, PrimaryGoal.MINUS_COMBAT, [], usualDropItems);
     manager.preAdventure();
+    Macro.mWhile(
+      'hasskill CLEESH && hasskill Macrometeorite && hasskill Extract Jelly && !hpbelow 500 && !pastround 20 && monstername "stench hobo"',
+      Macro.skill($skill`Extract Jelly`)
+        .skill($skill`CLEESH`)
+        .skill($skill`Macrometeorite`)
+    )
+      .stasis()
+      .kill()
+      .setAutoAttack();
     adventureMacro($location`The Heap`, Macro.abort());
 
     if (lastWasCombat() && lastMonster() === $monster`stench hobo`) {
@@ -83,7 +90,7 @@ export function doHeap(stopTurncount: number) {
     if (myTurncount() % 20 === 0) state = getHeapState();
   }
 
-  if (getImageHeap() === 10) {
+  if (getImageHeap.forceUpdate() === 10) {
     // Reset for next instance once we find Oscus.
     setPropertyInt('minehobo_heapNcsUntilCompost', 0);
     print('At Oscus. Heap complete!');

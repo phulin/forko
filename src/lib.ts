@@ -37,9 +37,9 @@ export function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(n, max));
 }
 
-export function getPropertyString(name: string, def: string | null = null) {
+export function getPropertyString(name: string, def: string | null = null): string {
   const str = getProperty(name);
-  return str === '' ? def : str;
+  return str === '' && def !== null ? def : str;
 }
 
 export function getPropertyInt(name: string, default_: number | null = null): number {
@@ -61,7 +61,7 @@ export function getPropertyBoolean(name: string, default_: boolean | null = null
 }
 
 export function setPropertyInt(name: string, value: number) {
-  setProperty(name, value);
+  setProperty(name, value.toString());
 }
 
 export function setChoice(adv: number, choice: number) {
@@ -207,8 +207,8 @@ const places: { [index: string]: { name: string; number: number } } = {
 };
 export function getImage(location: Location) {
   const { name, number } = places[location.toString()];
-  const text = visitUrl('clan_hobopolis.php?place=' + number);
-  const match = text.match(new RegExp(name + '([0-9]+)o?.gif'));
+  const text = visitUrl(`clan_hobopolis.php?place=${number}`);
+  const match = text.match(new RegExp(`${name}([0-9]+)o?.gif`));
   if (!match) return -1;
   return parseInt(match[1], 10);
 }

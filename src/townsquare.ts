@@ -8,22 +8,13 @@ import {
   round,
   haveEffect,
   print,
-  min,
   ceil,
   toFloat,
 } from 'kolmafia';
 import { $effect, $location, $skill, $stat } from 'libram/src';
+import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacro, Macro } from './combat';
-import {
-  mustStop,
-  setChoice,
-  getImage,
-  extractInt,
-  memoizeTurncount,
-  usualDropItems,
-  AdventuringManager,
-  PrimaryGoal,
-} from './lib';
+import { mustStop, setChoice, getImage, extractInt, memoizeTurncount } from './lib';
 import { moodBaseline } from './mood';
 
 enum PartType {
@@ -71,7 +62,7 @@ const currentParts = memoizeTurncount(() => {
   const result = new Map<HoboPart, number>();
   const text = visitUrl('clan_hobopolis.php?place=3&action=talkrichard&whichtalk=3');
   for (const part of allParts.values()) {
-    const partRe = new RegExp('<b>(a|[0-9]+)</b> ' + part.regex.source, 'g');
+    const partRe = new RegExp(`<b>(a|[0-9]+)</b> ${part.regex.source}`, 'g');
     result.set(part, extractInt(partRe, text));
   }
   return result;
@@ -91,7 +82,7 @@ function getParts(part: HoboPart, desiredParts: number, stopTurncount: number) {
     const predictedDamage =
       (32 + 0.5 * myBuffedstat($stat`Mysticality`)) * (1 + numericModifier('spell damage percent') / 100);
     if (predictedDamage < 505) {
-      abort('Predicted spell damage ' + round(predictedDamage) + ' is not enough to overkill hobos.');
+      abort(`Predicted spell damage ${round(predictedDamage)} is not enough to overkill hobos.`);
     }
     if (haveEffect(part.intrinsic) === 0) {
       cliExecute(part.intrinsic.default);
@@ -155,7 +146,7 @@ export function doTownsquare(stopTurncount: number) {
         // Each part we add to our goal kills this many hobos - for the part with lowest, it's 9.
         // The part with the second lowest, it's 2 hobos plus 1 scarehobo or 10.
         const scarehoboFactor = idx + 9;
-        const partsThisRound = min(ceil(hobosRemaining / toFloat(scarehoboFactor) - 0.001), killsToNext);
+        const partsThisRound = Math.min(ceil(hobosRemaining / toFloat(scarehoboFactor) - 0.001), killsToNext);
         for (let idx2 = 0; idx2 <= idx; idx2++) {
           plan[idx2].count += partsThisRound;
         }
@@ -164,18 +155,18 @@ export function doTownsquare(stopTurncount: number) {
     }
 
     if (hobosRemaining > 0) {
-      print('Remaining after: ' + hobosRemaining);
+      print(`Remaining after: ${hobosRemaining}`);
       for (const partPlan of plan) {
         partPlan.count += ceil((hobosRemaining * 3) / 7 / 6);
       }
     }
 
     for (const partPlan of plan) {
-      print('PLAN: For part ' + partPlan.type.name + ', get ' + partPlan.count + ' more parts.');
+      print(`PLAN: For part ${partPlan.type.name}, get ${partPlan.count} more parts.`);
     }
     plan.sort((x, y) => x.type.type - y.type.type);
     for (const partPlan of plan) {
-      print('PLAN: For part ' + partPlan.type.name + ', get ' + partPlan.count + ' more parts.');
+      print(`PLAN: For part ${partPlan.type.name}, get ${partPlan.count} more parts.`);
     }
     for (const partPlan of plan) {
       getParts(partPlan.type, partPlan.count, stopTurncount);
