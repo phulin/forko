@@ -13,7 +13,7 @@ import { $location } from 'libram/src';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacro, Macro } from './combat';
 import { mustStop, setChoice, getImage, stopAt, wrapMain, extractInt, lastWasCombat, clamp } from './lib';
-import { expectedTurns, moodMinusCombat } from './mood';
+import { expectedTurns, moodBaseline, moodMinusCombat } from './mood';
 
 // Formatted like clanid:ascension;clanid:ascension
 function clanYodelAscensions() {
@@ -114,12 +114,17 @@ export function doEe(stopTurncount: number, pass: number) {
       // Yodel heart out if we're done with icicles.
       setChoice(217, state.icicles >= ICICLE_COUNT ? 3 : 1);
 
+      const needMinusCombat = !yodeled || state.icicles < ICICLE_COUNT || state.flimflams + state.diverts < 21;
       const estimatedTurns = 2 * (ICICLE_COUNT - state.icicles) + state.image * 10;
-      moodMinusCombat(expectedTurns(stopTurncount), clamp(estimatedTurns, 0, 300));
+      if (needMinusCombat) {
+        moodBaseline(clamp(estimatedTurns, 0, 300));
+      } else {
+        moodMinusCombat(expectedTurns(stopTurncount), clamp(estimatedTurns, 0, 300));
+      }
       const manager = new AdventuringManager(
         $location`Exposure Esplanade`,
-        PrimaryGoal.MINUS_COMBAT,
-        [],
+        needMinusCombat ? PrimaryGoal.MINUS_COMBAT : PrimaryGoal.NONE,
+        needMinusCombat ? [] : ['familiar weight'],
         usualDropItems
       );
       manager.preAdventure();

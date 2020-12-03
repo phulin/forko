@@ -28,7 +28,6 @@ import {
   haveFamiliar,
   myInebriety,
   inebrietyLimit,
-  setAutoAttack,
 } from 'kolmafia';
 import { $effect, $familiar, $item, $items, $monster, $skill, $skills } from 'libram/src';
 import { getPropertyInt, myFamiliarWeight, setPropertyInt } from './lib';
@@ -95,7 +94,8 @@ export class Macro {
       true,
       true
     );
-    setAutoAttack(MACRO_NAME);
+    visitUrl(`account.php?am=1&action=autoattack&value=${99000000 + Macro.cachedMacroId}&ajax=1`);
+    print(`New autoattack is ${getAutoAttack()}`);
     Macro.cachedAutoAttack = this.toString();
   }
 

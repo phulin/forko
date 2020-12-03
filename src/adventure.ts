@@ -32,6 +32,8 @@ import {
   myTurncount,
   adv1,
   haveSkill,
+  retrieveItem,
+  myAdventures,
 } from 'kolmafia';
 import { $item, $skill, $items, $familiar, $familiars, $locations, $effect, $location } from 'libram/src';
 import { fillAsdonMartinTo } from './asdon';
@@ -70,6 +72,16 @@ export function maximizeCached(objective: string) {
   const familiarChanged = oldFamiliar !== myFamiliar().toString();
 
   if (!objectiveChanged && !statsChanged && !familiarChanged) return;
+
+  if (
+    objective.includes('familiar weight') &&
+    availableAmount($item`burning paper crane`) === 0 &&
+    availableAmount($item`cursed pirate cutlass`) === 0 &&
+    mallPrice($item`burning newspaper`) < 6000 &&
+    myAdventures() > 300
+  ) {
+    retrieveItem(1, $item`burning paper crane`);
+  }
 
   if (maximize(objective, false)) {
     setProperty('minehobo_lastObjective', objective);
@@ -202,14 +214,8 @@ export class AdventuringManager {
     forceEquip: Item[] = [],
     banned: Item[] = []
   ) {
-    this.location = location;
-    this.primaryGoal = primaryGoal;
-    this.auxiliaryGoals = auxiliaryGoals;
-    this.forceEquip = forceEquip;
-    this.banned = banned;
-
     if (myInebriety() > inebrietyLimit()) {
-      forceEquip = [...forceEquip, $item`Drunkula's wineglass`];
+      forceEquip = [...exclude(forceEquip, [$item`hobo code binder`]), $item`Drunkula's wineglass`];
       auxiliaryGoals = [...auxiliaryGoals, '0.01 weapon damage'];
     } else if (
       getPropertyInt('_sausageFights') < SAUSAGE_GOBLIN_GOAL &&
@@ -218,6 +224,12 @@ export class AdventuringManager {
       forceEquip = [...forceEquip, $item`Kramco Sausage-o-Matic™`];
     }
     banned = [...banned, ...$items`Pigsticker of Violence, porcelain porkpie`];
+
+    this.location = location;
+    this.primaryGoal = primaryGoal;
+    this.auxiliaryGoals = auxiliaryGoals;
+    this.forceEquip = forceEquip;
+    this.banned = banned;
   }
 
   limitedFreeRunsAvailable() {
@@ -245,7 +257,7 @@ export class AdventuringManager {
       availableAmount($item`latte lovers member's mug`) > 0 &&
       hasInk &&
       !this.forceEquip.includes($item`hobo code binder`) &&
-      (getPropertyBoolean('_latteBanishUsed') ? 0 : 1) + getPropertyInt('_latteRefills') < 4
+      (getPropertyBoolean('_latteBanishUsed') ? 0 : 1) + getPropertyInt('_latteRefillsUsed') < 3
     ) {
       if (getPropertyBoolean('_latteBanishUsed')) {
         cliExecute('latte refill cinnamon pumpkin ink');
@@ -258,6 +270,7 @@ export class AdventuringManager {
 
   setupFreeRuns() {
     if (!getPropertyBoolean('_minehobo_freeRunFamiliarUsed', false) && freeRunFamiliar !== $familiar`none`) {
+      useFamiliar(freeRunFamiliar);
       maximizeCached(
         renderObjective(
           PrimaryGoal.NONE,
@@ -266,7 +279,6 @@ export class AdventuringManager {
           this.banned
         )
       );
-      useFamiliar(freeRunFamiliar);
       if (getPropertyInt('_banderRunaways') * 5 < myFamiliarWeight() && tryEnsureSong($skill`The Ode to Booze`)) {
         this.primaryGoal = PrimaryGoal.NONE;
         this.auxiliaryGoals = ['familiar weight', ...this.auxiliaryGoals];
@@ -313,7 +325,15 @@ export class AdventuringManager {
       // TODO: Could include LHM here, but difficult
     }
 
-    if (this.location === $location`The Heap` && getPropertyInt('_macrometeoriteUses') < 10) {
+    if (pickedFamiliar === null && myMp() < 200) {
+      pickedFamiliar = $familiar`Stocking Mimic`;
+    }
+
+    if (
+      pickedFamiliar === null &&
+      this.location === $location`The Heap` &&
+      getPropertyInt('_macrometeoriteUses') < 10
+    ) {
       pickedFamiliar = $familiar`Space Jellyfish`;
     }
 
@@ -324,6 +344,8 @@ export class AdventuringManager {
       const actionPercentage = 1 / 3 + (haveEffect($effect`Jingle Jangle Jingle`) ? 0.1 : 0);
       const mimicValue = mimicDropValue + ((mimicWeight * actionPercentage * 1) / 4) * 10 * 4 * 1.2;
       familiarValue.push([$familiar`Stocking Mimic`, mimicValue]);
+
+      familiarValue.push([$familiar`Red-Nosed Snapper`, mallPrice($item`beggin' cologne`) / 11]);
 
       if (this.location === $location`The Heap`) {
         const jellyfishValue = mallPrice($item`stench jelly`) * 0.1;
@@ -345,6 +367,10 @@ export class AdventuringManager {
     if (pickedFamiliar === $familiar`Stocking Mimic`) {
       equip($item`bag of many confections`);
       maybeFeedMimic();
+    }
+    if (pickedFamiliar === $familiar`Red-Nosed Snapper` && getProperty('redSnapperPhylum') !== 'hobo') {
+      visitUrl('familiar.php?action=guideme&pwd');
+      visitUrl('choice.php?pwd&whichchoice=1396&option=1&cat=hobo');
     }
     if (AdventuringManager.lastFamiliar !== pickedFamiliar) {
       print(`Picked familiar ${myFamiliar()}.`, 'blue');
