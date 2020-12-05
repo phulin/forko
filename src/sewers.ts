@@ -25,7 +25,7 @@ export function throughSewers() {
   return visitUrl('clan_hobopolis.php').includes('clan_hobopolis.php?place=2');
 }
 
-function sewerAccess() {
+export function sewerAccess() {
   return visitUrl('clan_hobopolis.php').includes('adventure.php?snarfblat=166');
 }
 

@@ -215,8 +215,10 @@ export class Macro {
 
   stasis() {
     return this.externalIf(myInebriety() > inebrietyLimit(), 'attack')
+      .mIf('!hpbelow 500', Macro.skill($skill`Curse of Weaksauce`))
       .mIf('!hpbelow 500', Macro.skill($skill`Extract`))
       .mIf('!hpbelow 500', Macro.skill($skill`Extract Jelly`))
+      .mIf('!hpbelow 500', Macro.skill($skill`Micrometeorite`))
       .mWhile('!pastround 9 && !hpbelow 500', Macro.item($item`seal tooth`));
   }
 

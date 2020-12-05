@@ -34,6 +34,7 @@ import {
   haveSkill,
   retrieveItem,
   myAdventures,
+  shopAmount,
 } from 'kolmafia';
 import { $item, $skill, $items, $familiar, $familiars, $locations, $effect, $location } from 'libram/src';
 import { fillAsdonMartinTo } from './asdon';
@@ -329,14 +330,6 @@ export class AdventuringManager {
       pickedFamiliar = $familiar`Stocking Mimic`;
     }
 
-    if (
-      pickedFamiliar === null &&
-      this.location === $location`The Heap` &&
-      getPropertyInt('_macrometeoriteUses') < 10
-    ) {
-      pickedFamiliar = $familiar`Space Jellyfish`;
-    }
-
     if (pickedFamiliar === null) {
       const familiarValue: [Familiar, number][] = [];
 
@@ -345,10 +338,13 @@ export class AdventuringManager {
       const mimicValue = mimicDropValue + ((mimicWeight * actionPercentage * 1) / 4) * 10 * 4 * 1.2;
       familiarValue.push([$familiar`Stocking Mimic`, mimicValue]);
 
-      familiarValue.push([$familiar`Red-Nosed Snapper`, mallPrice($item`beggin' cologne`) / 11]);
+      const cologne = $item`beggin' cologne`;
+      const colognePrice = mallPrice(cologne) - 10 * (shopAmount(cologne) + availableAmount(cologne));
+      familiarValue.push([$familiar`Red-Nosed Snapper`, colognePrice / 11]);
 
       if (this.location === $location`The Heap`) {
-        const jellyfishValue = mallPrice($item`stench jelly`) * 0.1;
+        const probability = [1, 0.5, 0.33, 0.25, 0.2, 0.05][clamp(getPropertyInt('_spaceJellyfishDrops'), 0, 5)];
+        const jellyfishValue = mallPrice($item`stench jelly`) * probability;
         familiarValue.push([$familiar`Space Jellyfish`, jellyfishValue]);
       }
 

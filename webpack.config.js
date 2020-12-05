@@ -10,6 +10,7 @@ module.exports = {
     hobostatus: './src/status.ts',
     sewers: './src/sewers.ts',
     ee: './src/ee.ts',
+    rescue: './src/rescue.ts',
   },
   mode: 'development',
   devtool: false,
