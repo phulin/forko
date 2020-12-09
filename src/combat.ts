@@ -161,11 +161,20 @@ export class Macro {
 
   skill(sk: Skill) {
     const name = sk.name.replace('%fn, ', '');
-    return this.mIf(`hasskill ${name}`, Macro.step(`skill ${name}`));
+    return this.step(`skill ${name}`); // this.mIf(`hasskill ${name}`, Macro.step(`skill ${name}`));
   }
 
   static skill(sk: Skill) {
     return new Macro().skill(sk);
+  }
+
+  trySkill(sk: Skill) {
+    const name = sk.name.replace('%fn, ', '');
+    return this.mIf(`hasskill ${name}`, Macro.skill(sk));
+  }
+
+  static trySkill(sk: Skill) {
+    return new Macro().trySkill(sk);
   }
 
   skills(skills: Skill[]) {
@@ -215,11 +224,22 @@ export class Macro {
 
   stasis() {
     return this.externalIf(myInebriety() > inebrietyLimit(), 'attack')
-      .mIf('!hpbelow 500', Macro.skill($skill`Curse of Weaksauce`))
+      .externalIf(
+        myFamiliar() === $familiar`Stocking Mimic`,
+        Macro.mIf('!hpbelow 500', Macro.skill($skill`Curse of Weaksauce`).skill($skill`Micrometeorite`)).toString()
+      )
+      .skill($skill`Entangling Noodles`)
       .mIf('!hpbelow 500', Macro.skill($skill`Extract`))
-      .mIf('!hpbelow 500', Macro.skill($skill`Extract Jelly`))
-      .mIf('!hpbelow 500', Macro.skill($skill`Micrometeorite`))
-      .mWhile('!pastround 9 && !hpbelow 500', Macro.item($item`seal tooth`));
+      .externalIf(
+        myFamiliar() === $familiar`Space Jellyfish`,
+        Macro.mIf('!hpbelow 500', Macro.skill($skill`Extract Jelly`)).toString()
+      )
+      .externalIf(
+        myFamiliar() === $familiar`Stocking Mimic`,
+        Macro.mWhile('!pastround 8', Macro.item($item`seal tooth`))
+          .skill($skill`Shell Up`)
+          .toString()
+      );
   }
 
   static stasis() {
@@ -231,13 +251,14 @@ export class Macro {
       .mIf(Macro.monster($monster`sleaze hobo`), Macro.skillRepeat($skill`Saucegeyser`))
       .mIf(
         '!monstername "witchess" && !monstername "sausage goblin" && !monstername "black crayon"',
-        Macro.skill($skill`Shattering Punch`)
-          .skill($skill`Gingerbread Mob Hit`)
-          .skill($skill`Chest X-Ray`)
+        Macro.trySkill($skill`Shattering Punch`)
+          .trySkill($skill`Gingerbread Mob Hit`)
+          .trySkill($skill`Chest X-Ray`)
       )
       .skill($skill`Lunging Thrust-Smack`)
       .skill($skill`Lunging Thrust-Smack`)
-      .skill($skill`Lunging Thrust-Smack`)
+      .skill($skill`Stuffed Mortar Shell`)
+      .skill($skill`Saucegeyser`)
       .attack();
   }
 
@@ -403,6 +424,11 @@ export function adventureMacro(loc: Location, macro: Macro) {
   adventureMode(loc, MODE_MACRO, macro.toString());
 }
 
+export function adventureMacroAuto(loc: Location, macro: Macro) {
+  macro.setAutoAttack();
+  adventureMode(loc, MODE_MACRO, Macro.abort().toString());
+}
+
 export function adventureKill(loc: Location) {
   adventureMacro(loc, Macro.kill());
 }
@@ -436,10 +462,9 @@ export function adventureRunUnlessFree(loc: Location, preMacro: Macro, killMacro
 }
 
 export function adventureRunOrStasis(loc: Location, freeRun: boolean) {
-  const killMacro = myFamiliar() === $familiar`Stocking Mimic` ? Macro.stasis().kill() : Macro.kill();
   if (freeRun) {
-    adventureRunUnlessFree(loc, Macro.skill($skill`Extract`).skill($skill`Extract Jelly`), killMacro);
+    adventureRunUnlessFree(loc, Macro.skill($skill`Extract`).skill($skill`Extract Jelly`), Macro.stasis().kill());
   } else {
-    adventureMacro(loc, killMacro);
+    adventureMacro(loc, Macro.stasis().kill());
   }
 }

@@ -59,6 +59,6 @@ export function fillAsdonMartinTo(targetUnits: number) {
   }
 }
 
-export function main() {
-  fillAsdonMartinTo(30);
+export function main(args: string) {
+  fillAsdonMartinTo(args.trim().match(/^[0-9]+$/) ? parseInt(args, 10) : 37);
 }

@@ -1,8 +1,8 @@
 import { floor, visitUrl, print } from 'kolmafia';
 import { $location } from 'libram/src';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
-import { adventureMacro, Macro } from './combat';
-import { getImage, setChoice, mustStop, stopAt, extractInt, wrapMain } from './lib';
+import { adventureMacroAuto, Macro } from './combat';
+import { setChoice, mustStop, stopAt, extractInt, wrapMain, getImageBb, printLines } from './lib';
 import { expectedTurns, moodMinusCombat } from './mood';
 
 const STACKHEIGHT = 34;
@@ -20,7 +20,7 @@ class BBState {
 
 export function getBbState() {
   const state = new BBState();
-  state.image = getImage($location`Burnbarrel Blvd.`);
+  state.image = getImageBb();
 
   const logText = visitUrl('clan_raidlogs.php');
   state.estimatedProgress = extractInt(/defeated +Hot hobo x ([0-9]+)/g, logText);
@@ -36,7 +36,7 @@ export function getBbState() {
 }
 
 export function doBb(stopTurncount: number) {
-  if (getImage($location`Burnbarrel Blvd.`) >= 10) {
+  if (getImageBb() >= 10) {
     print('Finished BB.');
     return;
   }
@@ -46,8 +46,6 @@ export function doBb(stopTurncount: number) {
   setChoice(207, 2); // Skip door
   setChoice(213, 2); // Skip piping hot
   setChoice(291, 1); // Take SR
-
-  Macro.stasis().kill().setAutoAttack();
 
   let state = getBbState();
   while (state.image < 10 && !mustStop(stopTurncount)) {
@@ -72,14 +70,16 @@ export function doBb(stopTurncount: number) {
     moodMinusCombat(expectedTurns(stopTurncount), estimatedTurns, maxPricePerTurn);
     const manager = new AdventuringManager($location`Burnbarrel Blvd.`, PrimaryGoal.MINUS_COMBAT, [], usualDropItems);
     manager.preAdventure();
-    adventureMacro($location`Burnbarrel Blvd.`, Macro.abort());
+    adventureMacroAuto($location`Burnbarrel Blvd.`, Macro.stasis().kill());
 
     state = getBbState();
-    print(`Image: ${state.image}`);
-    print(`Tires: ${state.tiresCurrent} current, ${state.tiresTotal} total.`);
-    print(`Estimated progress: ${state.estimatedProgress}`);
+    printLines(
+      `Image: ${state.image}`,
+      `Tires: ${state.tiresCurrent} current, ${state.tiresTotal} total.`,
+      `Estimated progress: ${state.estimatedProgress}`
+    );
   }
-  if (getImage($location`Burnbarrel Blvd.`) >= 10) {
+  if (getImageBb() >= 10) {
     print('Finished BB.');
   }
 }

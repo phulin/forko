@@ -10,14 +10,18 @@ import {
   getProperty,
   haveEffect,
   itemAmount,
+  logprint,
   mallPrice,
   myAdventures,
+  myClass,
   myFamiliar,
   myLocation,
   myMaxmp,
   myMp,
+  myThrall,
   myTurncount,
   print,
+  printHtml,
   setAutoAttack,
   setProperty,
   shopAmount,
@@ -26,11 +30,12 @@ import {
   timeToString,
   todayToString,
   urlEncode,
+  useSkill,
   visitUrl,
   wait,
   weightAdjustment,
 } from 'kolmafia';
-import { $effect, $item, $items, $location } from 'libram/src';
+import { $class, $effect, $item, $items, $location, $skill, $thrall } from 'libram/src';
 import { getSewersState, throughSewers } from './sewers';
 
 export function clamp(n: number, min: number, max: number) {
@@ -241,6 +246,9 @@ export const getImageAhbg = memoizeTurncount(() => getImage($location`The Ancien
 
 export function wrapMain(action: () => void) {
   try {
+    if (myClass() === $class`Pastamancer` && myThrall() !== $thrall`Elbow Macaroni`) {
+      useSkill(1, $skill`Bind Undead Elbow Macaroni`);
+    }
     ensureJingle();
     cliExecute('counters nowarn Fortune Cookie');
     cliExecute('mood apathetic');
@@ -269,4 +277,11 @@ export function extractInt(regex: RegExp, text: string, group = 1) {
     }
   }
   return result;
+}
+
+export function printLines(...lines: string[]) {
+  for (const line of lines) {
+    logprint(line);
+  }
+  printHtml(lines.map(line => line.replace('<', '&lt;')).join('\n'));
 }

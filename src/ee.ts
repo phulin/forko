@@ -11,8 +11,19 @@ import {
 } from 'kolmafia';
 import { $location } from 'libram/src';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
-import { adventureMacro, Macro } from './combat';
-import { mustStop, setChoice, getImage, stopAt, wrapMain, extractInt, lastWasCombat, clamp } from './lib';
+import { adventureMacroAuto, Macro } from './combat';
+import {
+  mustStop,
+  setChoice,
+  getImage,
+  stopAt,
+  wrapMain,
+  extractInt,
+  lastWasCombat,
+  clamp,
+  getChoice,
+  getImageEe,
+} from './lib';
 import { expectedTurns, moodBaseline, moodMinusCombat } from './mood';
 
 // Formatted like clanid:ascension;clanid:ascension
@@ -56,11 +67,13 @@ export function printState(state: EEState) {
 
 export function getState(checkImage = true) {
   const state = new EEState();
-  if (checkImage || myTurncount() % 10 === 0) {
-    state.image = getImage($location`Exposure Esplanade`);
-    if (state.image < 0) {
-      abort('Cannot get to EE.');
-    }
+  if (checkImage) {
+    state.image = getImageEe.forceUpdate();
+  } else {
+    state.image = getImageEe();
+  }
+  if (state.image < 0) {
+    abort('Cannot get to EE.');
   }
 
   const logText = visitUrl('clan_raidlogs.php');
@@ -91,8 +104,6 @@ export function doEe(stopTurncount: number, pass: number) {
     setChoice(215, 3); // Make icicles
     setChoice(217, 1); // Yodel a little
     setChoice(292, 2); // Reject SR
-
-    Macro.stasis().kill().setAutoAttack();
 
     // First pass: Go until we get to icicle + diverts.
     // Second pass: Go until yodeling.
@@ -128,17 +139,25 @@ export function doEe(stopTurncount: number, pass: number) {
         usualDropItems
       );
       manager.preAdventure();
-      adventureMacro($location`Exposure Esplanade`, Macro.abort());
+      adventureMacroAuto($location`Exposure Esplanade`, Macro.stasis().kill());
 
       if (!lastWasCombat()) {
         if (lastChoice() === 202) {
           break;
+        } else if (lastChoice() === 215 && getChoice(215) === 3 && pass === 1) {
+          state.icicles += 1;
+        } else if (lastChoice() === 215 && getChoice(215) === 2) {
+          state.diverts += 1;
         } else if (lastChoice() === 217 && state.icicles >= ICICLE_COUNT) {
           recordYodel();
           yodeled = true;
         }
       }
-      state = getState();
+      if (myTurncount() % 10 === 0) {
+        state = getState();
+      } else {
+        state.image = getImageEe();
+      }
       printState(state);
     }
 

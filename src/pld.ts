@@ -3,7 +3,7 @@ import { $location } from 'libram/src';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureRunOrStasis } from './combat';
 import { getState as getEeState } from './ee';
-import { setChoice, mustStop, stopAt, extractInt, wrapMain, getImagePld, lastWasCombat } from './lib';
+import { setChoice, mustStop, stopAt, extractInt, wrapMain, getImagePld, lastWasCombat, printLines } from './lib';
 import { expectedTurns, moodPlusCombat } from './mood';
 
 const FREE_RUN_PLD = true;
@@ -58,10 +58,12 @@ export function doPld(stopTurncount: number) {
     adventureRunOrStasis(location, manager.willFreeRun);
 
     state = getPldState();
-    print(`Diverts: ${diverts}`);
-    print(`Flimflams: ${state.flimflams}`);
-    print(`Fights: ${state.fights}`);
-    print(`Image (approx): ${getImagePld()}`);
+    printLines(
+      `Diverts: ${diverts}`,
+      `Flimflams: ${state.flimflams}`,
+      `Fights: ${state.fights}`,
+      `Image (approx): ${getImagePld()}`
+    );
 
     if (!lastWasCombat() && lastChoice() === 205) {
       break;

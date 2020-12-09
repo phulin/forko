@@ -326,7 +326,8 @@ export class AdventuringManager {
       // TODO: Could include LHM here, but difficult
     }
 
-    if (pickedFamiliar === null && myMp() < 200) {
+    const lowMp = (myFamiliar() !== $familiar`Stocking Mimic` && myMp() < 400) || myMp() < 200;
+    if (pickedFamiliar === null && myInebriety() <= inebrietyLimit() && lowMp) {
       pickedFamiliar = $familiar`Stocking Mimic`;
     }
 

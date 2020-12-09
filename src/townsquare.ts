@@ -11,7 +11,7 @@ import {
   ceil,
   toFloat,
 } from 'kolmafia';
-import { $effect, $location, $skill, $stat } from 'libram/src';
+import { $effect, $location, $monster, $skill, $stat } from 'libram/src';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacro, Macro } from './combat';
 import { mustStop, setChoice, getImage, extractInt, memoizeTurncount } from './lib';
@@ -78,29 +78,31 @@ function getParts(part: HoboPart, desiredParts: number, stopTurncount: number) {
   // This is up here so we have the right effects on for damage prediction.
   moodBaseline(stopTurncount - myTurncount());
 
-  if ([PartType.COLD, PartType.STENCH, PartType.SPOOKY, PartType.SLEAZE].includes(part.type)) {
-    const predictedDamage =
-      (32 + 0.5 * myBuffedstat($stat`Mysticality`)) * (1 + numericModifier('spell damage percent') / 100);
-    if (predictedDamage < 505) {
-      abort(`Predicted spell damage ${round(predictedDamage)} is not enough to overkill hobos.`);
-    }
-    if (haveEffect(part.intrinsic) === 0) {
-      cliExecute(part.intrinsic.default);
-    }
-    Macro.stasis()
-      .skill($skill`Stuffed Mortar Shell`)
-      .skillRepeat($skill`Cannelloni Cannon`)
-      .setAutoAttack();
-  } else if (part.type === PartType.HOT) {
-    Macro.stasis()
-      .skillRepeat($skill`Saucegeyser`)
-      .setAutoAttack();
-  } else if (part.type === PartType.PHYSICAL) {
-    Macro.stasis()
-      .skillRepeat($skill`Lunging Thrust-Smack`)
-      .setAutoAttack();
-  }
   while ((currentParts().get(part) as number) < desiredParts && !pldAccessible() && !mustStop(stopTurncount)) {
+    if ([PartType.COLD, PartType.STENCH, PartType.SPOOKY, PartType.SLEAZE].includes(part.type)) {
+      const predictedDamage =
+        (32 + 0.5 * myBuffedstat($stat`Mysticality`)) * (1 + numericModifier('spell damage percent') / 100);
+      if (predictedDamage < 505) {
+        abort(`Predicted spell damage ${round(predictedDamage)} is not enough to overkill hobos.`);
+      }
+      if (haveEffect(part.intrinsic) === 0) {
+        cliExecute(part.intrinsic.default);
+      }
+      Macro.stasis()
+        .mIf(Macro.monster($monster`sausage goblin`), Macro.skillRepeat($skill`Saucegeyser`))
+        .skill($skill`Stuffed Mortar Shell`)
+        .skillRepeat($skill`Cannelloni Cannon`)
+        .setAutoAttack();
+    } else if (part.type === PartType.HOT) {
+      Macro.stasis()
+        .skillRepeat($skill`Saucegeyser`)
+        .setAutoAttack();
+    } else if (part.type === PartType.PHYSICAL) {
+      Macro.stasis()
+        .skillRepeat($skill`Lunging Thrust-Smack`)
+        .setAutoAttack();
+    }
+
     const manager = new AdventuringManager(
       $location`Hobopolis Town Square`,
       PrimaryGoal.NONE,

@@ -1,7 +1,7 @@
 import { visitUrl, print, lastChoice } from 'kolmafia';
 import { $location } from 'libram/src';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
-import { adventureMacro, Macro } from './combat';
+import { adventureMacroAuto, Macro } from './combat';
 import {
   setChoice,
   mustStop,
@@ -12,6 +12,7 @@ import {
   extractInt,
   getImageAhbg,
   wrapMain,
+  printLines,
 } from './lib';
 import { expectedTurns, moodBaseline, moodMinusCombat } from './mood';
 
@@ -44,8 +45,6 @@ export function doAhbg(stopTurncount: number) {
     setChoice(221, 1); // Study the dance moves.
     setChoice(222, 1); // Dance.
     setChoice(293, 2); // Skip SR.
-
-    Macro.stasis().kill().setAutoAttack();
   }
 
   while (state.image < 10 && !mustStop(stopTurncount)) {
@@ -73,7 +72,7 @@ export function doAhbg(stopTurncount: number) {
       usualDropItems
     );
     manager.preAdventure();
-    adventureMacro($location`The Ancient Hobo Burial Ground`, Macro.abort());
+    adventureMacroAuto($location`The Ancient Hobo Burial Ground`, Macro.stasis().kill());
 
     if (!lastWasCombat()) {
       if (lastChoice() === 208) {
@@ -89,11 +88,13 @@ export function doAhbg(stopTurncount: number) {
     }
 
     state = getAhbgState();
-    print(`Image: ${state.image}`);
-    print(`Flimflams: ${state.flimflams}`);
-    print(`Chillier Night: ${state.watched + state.dances}`);
-    print(`My dances: ${state.dances}`);
-    print(`Until flowers: ${getPropertyInt('minehobo_ahbgNcsUntilFlowers')}`);
+    printLines(
+      `Image: ${state.image}`,
+      `Flimflams: ${state.flimflams}`,
+      `Chillier Night: ${state.watched + state.dances}`,
+      `My dances: ${state.dances}`,
+      `Until flowers: ${getPropertyInt('minehobo_ahbgNcsUntilFlowers')}`
+    );
   }
 
   if (getImageAhbg.forceUpdate() === 10) {

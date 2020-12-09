@@ -1,7 +1,7 @@
-import { print, lastChoice, visitUrl, lastMonster, myTurncount } from 'kolmafia';
-import { $location, $monster, $skill } from 'libram/src';
+import { print, lastChoice, visitUrl, lastMonster, myTurncount, myFamiliar } from 'kolmafia';
+import { $familiar, $location, $monster, $skill } from 'libram/src';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
-import { adventureMacro, Macro } from './combat';
+import { adventureMacroAuto, Macro } from './combat';
 import {
   getPropertyInt,
   setChoice,
@@ -13,6 +13,7 @@ import {
   stopAt,
   wrapMain,
   getImageHeap,
+  printLines,
 } from './lib';
 import { expectedTurns, moodMinusCombat } from './mood';
 
@@ -50,8 +51,10 @@ export function doHeap(stopTurncount: number) {
   let state = getHeapState();
 
   while (!mustStop(stopTurncount)) {
-    print(`NCS until we compost: ${getPropertyInt('minehobo_heapNcsUntilCompost', 0)}`);
-    print(`Image (approx): ${getImageHeap()}`);
+    printLines(
+      `NCS until we compost: ${getPropertyInt('minehobo_heapNcsUntilCompost', 0)}`,
+      `Image (approx): ${getImageHeap()}`
+    );
 
     setChoice(216, getPropertyInt('minehobo_heapNcsUntilCompost', 0) <= 0 ? 1 : 2);
 
@@ -59,16 +62,18 @@ export function doHeap(stopTurncount: number) {
     moodMinusCombat(expectedTurns(stopTurncount), clamp(estimatedTurns, 0, 300));
     const manager = new AdventuringManager($location`The Heap`, PrimaryGoal.MINUS_COMBAT, [], usualDropItems);
     manager.preAdventure();
-    Macro.mWhile(
-      'hasskill CLEESH && hasskill Macrometeorite && hasskill Extract Jelly && !hpbelow 500 && !pastround 20 && monstername "stench hobo"',
-      Macro.skill($skill`Extract Jelly`)
-        .skill($skill`CLEESH`)
-        .skill($skill`Macrometeorite`)
+    const macro = Macro.externalIf(
+      myFamiliar() === $familiar`Space Jellyfish`,
+      Macro.mWhile(
+        'hasskill CLEESH && hasskill Macrometeorite && hasskill Extract Jelly && !hpbelow 500 && !pastround 20 && monstername "stench hobo"',
+        Macro.skill($skill`Extract Jelly`)
+          .skill($skill`CLEESH`)
+          .skill($skill`Macrometeorite`)
+      ).toString()
     )
       .stasis()
-      .kill()
-      .setAutoAttack();
-    adventureMacro($location`The Heap`, Macro.abort());
+      .kill();
+    adventureMacroAuto($location`The Heap`, macro);
 
     if (lastWasCombat() && lastMonster() === $monster`stench hobo`) {
       state.defeated += 1;
