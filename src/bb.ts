@@ -3,7 +3,7 @@ import { $location } from 'libram/src';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacroAuto, Macro } from './combat';
 import { setChoice, mustStop, stopAt, extractInt, wrapMain, getImageBb, printLines } from './lib';
-import { expectedTurns, moodMinusCombat } from './mood';
+import { expectedTurns, moodMinusCombat, tryEnsureTriviaMaster } from './mood';
 
 const STACKHEIGHT = 34;
 function tirevalancheKills(tires: number) {
@@ -68,6 +68,7 @@ export function doBb(stopTurncount: number) {
     }
 
     moodMinusCombat(expectedTurns(stopTurncount), estimatedTurns, maxPricePerTurn);
+    tryEnsureTriviaMaster(estimatedTurns);
     const manager = new AdventuringManager($location`Burnbarrel Blvd.`, PrimaryGoal.MINUS_COMBAT, [], usualDropItems);
     manager.preAdventure();
     adventureMacroAuto($location`Burnbarrel Blvd.`, Macro.stasis().kill());

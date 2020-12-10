@@ -199,8 +199,9 @@ export function drive(effect: Effect, maxTurns: number) {
 export function moodBaseline(maxTurns: number) {
   // Stats.
   tryEnsureSkill($skill`Get Big`, maxTurns);
-  tryEnsureSong($skill`Stevedave's Shanty of Superiority`, maxTurns);
-  tryEnsureTriviaMaster(maxTurns);
+  tryEnsurePotion($item`Ben-Gal™ balm`, maxTurns);
+  // tryEnsureSong($skill`Stevedave's Shanty of Superiority`, maxTurns);
+  // tryEnsureTriviaMaster(maxTurns);
 
   // Combat.
   tryEnsureSkill($skill`Carol of the Hells`, maxTurns);

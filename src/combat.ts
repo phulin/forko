@@ -28,6 +28,7 @@ import {
   haveFamiliar,
   myInebriety,
   inebrietyLimit,
+  getCounters,
 } from 'kolmafia';
 import { $effect, $familiar, $item, $items, $monster, $skill, $skills } from 'libram/src';
 import { getPropertyInt, myFamiliarWeight, setPropertyInt } from './lib';
@@ -64,12 +65,13 @@ export class Macro {
     return this.components.join(';');
   }
 
-  step(...nextSteps: string[]) {
-    this.components = [...this.components, ...nextSteps.filter(s => s.length > 0)];
+  step(...nextSteps: (string | Macro)[]) {
+    const nextStepsStrings = ([] as string[]).concat(...nextSteps.map(x => (x instanceof Macro ? x.components : [x])));
+    this.components = [...this.components, ...nextStepsStrings.filter(s => s.length > 0)];
     return this;
   }
 
-  static step(...nextSteps: string[]) {
+  static step(...nextSteps: (string | Macro)[]) {
     return new Macro().step(...nextSteps);
   }
 
@@ -123,31 +125,27 @@ export class Macro {
     return `!${condition}`;
   }
 
-  mIf(condition: string, ifTrue: Macro) {
-    return this.step(`if ${condition}`)
-      .step(...ifTrue.components)
-      .step('endif');
+  mIf(condition: string, ifTrue: string | Macro) {
+    return this.step(`if ${condition}`).step(ifTrue).step('endif');
   }
 
-  static mIf(condition: string, ifTrue: Macro) {
+  static mIf(condition: string, ifTrue: string | Macro) {
     return new Macro().mIf(condition, ifTrue);
   }
 
-  mWhile(condition: string, contents: Macro) {
-    return this.step(`while ${condition}`)
-      .step(...contents.components)
-      .step('endwhile');
+  mWhile(condition: string, contents: string | Macro) {
+    return this.step(`while ${condition}`).step(contents).step('endwhile');
   }
 
-  static mWhile(condition: string, contents: Macro) {
+  static mWhile(condition: string, contents: string | Macro) {
     return new Macro().mWhile(condition, contents);
   }
 
-  externalIf(condition: boolean, ...next: string[]) {
+  externalIf(condition: boolean, ...next: (string | Macro)[]) {
     return condition ? this.step(...next) : this;
   }
 
-  static externalIf(condition: boolean, ...next: string[]) {
+  static externalIf(condition: boolean, ...next: (string | Macro)[]) {
     return new Macro().externalIf(condition, ...next);
   }
 
@@ -226,13 +224,28 @@ export class Macro {
     return this.externalIf(myInebriety() > inebrietyLimit(), 'attack')
       .externalIf(
         myFamiliar() === $familiar`Stocking Mimic`,
-        Macro.mIf('!hpbelow 500', Macro.skill($skill`Curse of Weaksauce`).skill($skill`Micrometeorite`)).toString()
+        Macro.mIf(
+          '!hpbelow 500',
+          Macro.skill($skill`Curse of Weaksauce`)
+            .skill($skill`Micrometeorite`)
+            .skill($skill`Conspiratorial Whispers`)
+            .toString()
+        )
       )
       .skill($skill`Entangling Noodles`)
       .mIf('!hpbelow 500', Macro.skill($skill`Extract`))
       .externalIf(
         myFamiliar() === $familiar`Space Jellyfish`,
         Macro.mIf('!hpbelow 500', Macro.skill($skill`Extract Jelly`)).toString()
+      )
+      .externalIf(
+        getPropertyInt('_sourceTerminalDigitizeMonsterCount') >= 7 &&
+          getPropertyInt('_sourceTerminalDigitizeUses') < 3 &&
+          getCounters('Digitize Monster', 0, 0) !== '',
+        Macro.mIf(
+          `monstername "${getProperty('_sourceTerminalDigitizeMonster')}"`,
+          Macro.skill($skill`Digitize`)
+        ).toString()
       )
       .externalIf(
         myFamiliar() === $familiar`Stocking Mimic`,

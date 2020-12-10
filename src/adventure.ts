@@ -108,7 +108,7 @@ for (const testFam of $familiars`Pair of Stomping Boots, Frumious Bandersnatch`)
   if (haveFamiliar(testFam)) freeRunFamiliar = testFam;
 }
 
-export const usualDropItems = $items`lucky gold ring, Mr. Cheeng's spectacles, mafia thumb ring`;
+export const usualDropItems = $items`lucky gold ring, Mr. Cheeng's spectacles, mafia thumb ring, pantogram pants`;
 const turnOnlyItems = $items`mafia thumb ring`;
 const fightOnlyItems = $items`lucky gold ring, Mr. Cheeng's spectacles, mafia thumb ring`;
 
@@ -169,7 +169,13 @@ const rotatingFamiliars: { [index: string]: { expected: number[]; drop: Item; pr
   },
 };
 
-const mimicDropValue = averagePrice($items`Polka Pop, BitterSweetTarts, Piddles`) / (6.29 * 0.95 + 1 * 0.05);
+let savedMimicDropValue: number | null = null;
+function mimicDropValue() {
+  return (
+    savedMimicDropValue ??
+    (savedMimicDropValue = averagePrice($items`Polka Pop, BitterSweetTarts, Piddles`) / (6.29 * 0.95 + 1 * 0.05))
+  );
+}
 export enum PrimaryGoal {
   NONE,
   PLUS_COMBAT,
@@ -326,7 +332,7 @@ export class AdventuringManager {
       // TODO: Could include LHM here, but difficult
     }
 
-    const lowMp = (myFamiliar() !== $familiar`Stocking Mimic` && myMp() < 400) || myMp() < 200;
+    const lowMp = (myFamiliar() !== $familiar`Stocking Mimic` && myMp() < 200) || myMp() < 400;
     if (pickedFamiliar === null && myInebriety() <= inebrietyLimit() && lowMp) {
       pickedFamiliar = $familiar`Stocking Mimic`;
     }
@@ -336,7 +342,7 @@ export class AdventuringManager {
 
       const mimicWeight = myFamiliarWeight($familiar`Stocking Mimic`);
       const actionPercentage = 1 / 3 + (haveEffect($effect`Jingle Jangle Jingle`) ? 0.1 : 0);
-      const mimicValue = mimicDropValue + ((mimicWeight * actionPercentage * 1) / 4) * 10 * 4 * 1.2;
+      const mimicValue = mimicDropValue() + ((mimicWeight * actionPercentage * 1) / 4) * 10 * 4 * 1.2;
       familiarValue.push([$familiar`Stocking Mimic`, mimicValue]);
 
       const cologne = $item`beggin' cologne`;
