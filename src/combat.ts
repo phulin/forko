@@ -1,37 +1,40 @@
 import {
-  inMultiFight,
-  choiceFollowsFight,
-  print,
-  visitUrl,
-  availableAmount,
-  setProperty,
-  getProperty,
-  getLocationMonsters,
-  myLocation,
-  toMonster,
-  myMp,
-  haveSkill,
-  useSkill,
-  myFamiliar,
-  haveEffect,
-  runaway,
-  itemAmount,
-  handlingChoice,
-  lastChoice,
-  runChoice,
   adv1,
+  availableAmount,
   availableChoiceOptions,
-  runCombat,
-  urlEncode,
-  xpath,
+  choiceFollowsFight,
   getAutoAttack,
-  haveFamiliar,
-  myInebriety,
-  inebrietyLimit,
+  getCampground,
   getCounters,
+  getFuel,
+  getLocationMonsters,
+  getProperty,
+  handlingChoice,
+  haveEffect,
+  haveEquipped,
+  haveFamiliar,
+  haveSkill,
+  inebrietyLimit,
+  inMultiFight,
+  itemAmount,
+  lastChoice,
+  myFamiliar,
+  myInebriety,
+  myLocation,
+  myMp,
+  print,
+  runaway,
+  runChoice,
+  runCombat,
+  setProperty,
+  toMonster,
+  urlEncode,
+  useSkill,
+  visitUrl,
+  xpath,
 } from 'kolmafia';
 import { $effect, $familiar, $item, $items, $monster, $skill, $skills } from 'libram/src';
-import { getPropertyInt, myFamiliarWeight, setPropertyInt } from './lib';
+import { getPropertyBoolean, getPropertyInt, myFamiliarWeight, setPropertyInt } from './lib';
 
 // multiFight() stolen from Aenimus: https://github.com/Aenimus/aen_cocoabo_farm/blob/master/scripts/aen_combat.ash.
 // Thanks! Licensed under MIT license.
@@ -259,14 +262,34 @@ export class Macro {
     return new Macro().stasis();
   }
 
+  static nonFree() {
+    return '!monstername "witchess" && !monstername "sausage goblin" && !monstername "black crayon"';
+  }
+
   kill() {
     return this.externalIf(myInebriety() > inebrietyLimit(), 'attack')
       .mIf(Macro.monster($monster`sleaze hobo`), Macro.skillRepeat($skill`Saucegeyser`))
-      .mIf(
-        '!monstername "witchess" && !monstername "sausage goblin" && !monstername "black crayon"',
-        Macro.trySkill($skill`Shattering Punch`)
-          .trySkill($skill`Gingerbread Mob Hit`)
-          .trySkill($skill`Chest X-Ray`)
+      .externalIf(
+        getPropertyInt('_shatteringPunchUsed') < 3,
+        Macro.mIf(Macro.nonFree(), Macro.skill($skill`Shattering Punch`))
+      )
+      .externalIf(
+        !getPropertyBoolean('_gingerbreadMobHitUsed'),
+        Macro.mIf(Macro.nonFree(), Macro.skill($skill`Gingerbread Mob Hit`))
+      )
+      .externalIf(
+        getPropertyInt('_chestXRayUsed') < 3 && haveEquipped($item`Lil' Doctor™ bag`),
+        Macro.mIf(Macro.nonFree(), Macro.skill($skill`Chest X-Ray`))
+      )
+      .externalIf(
+        !getPropertyBoolean('_firedJokestersGun') && haveEquipped($item`The Jokester's gun`),
+        Macro.mIf(Macro.nonFree(), Macro.skill($skill`Fire the Jokester's Gun`))
+      )
+      .externalIf(
+        !getPropertyBoolean('_missileLauncherUsed') &&
+          getCampground()['Asdon Martin keyfob'] !== undefined &&
+          getFuel() >= 100,
+        Macro.mIf(Macro.nonFree(), Macro.skill($skill`Asdon Martin: Missile Launcher`))
       )
       .skill($skill`Lunging Thrust-Smack`)
       .skill($skill`Lunging Thrust-Smack`)

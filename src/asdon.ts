@@ -1,4 +1,4 @@
-import { historicalPrice, isNpcItem, visitUrl, getFuel, retrieveItem, abort, toInt } from 'kolmafia';
+import { abort, getFuel, historicalPrice, isNpcItem, retrieveItem, toInt, visitUrl } from 'kolmafia';
 import { $items } from 'libram/src';
 
 const fuelBlacklist = $items`cup of "tea", thermos of "whiskey", Lucky Lindy, Bee's Knees, Sockdollager, Ish Kabibble, Hot Socks, Phonus Balonus, Flivver, Sloppy Jalopy, glass of "milk"`;

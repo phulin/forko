@@ -1,4 +1,4 @@
-import { userConfirm, getClanName, print, myTurncount } from 'kolmafia';
+import { getClanName, myTurncount, print, userConfirm } from 'kolmafia';
 import { doAhbg } from './ahbg';
 import { doBb } from './bb';
 import { doEe } from './ee';
@@ -16,7 +16,7 @@ export function main(args: string) {
     return;
   }
 
-  if (!userConfirm('You are in clan ' + getClanName() + '. Is this right?')) {
+  if (!userConfirm(`You are in clan ${getClanName()}. Is this right?`)) {
     print('Wrong clan.', 'red');
     return;
   }

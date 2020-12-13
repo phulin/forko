@@ -49,16 +49,18 @@ export function setClan(target: string, verbose = true) {
 export function printClanStatus() {
   const raidlogs = visitUrl('clan_raidlogs.php');
   const bosses = ["Ol' Scratch", 'Frosty', 'Oscus', 'Zombo', 'Chester', 'Hodgman'];
-  const bossRe = new RegExp('defeated +(' + bosses.join('|') + ')', 'g');
+  const bossRe = new RegExp(`defeated +(${bosses.join('|')})`, 'g');
   const bossCount = (raidlogs.match(bossRe) || []).length;
   if (bossCount >= 4) {
-    printHtml('<b>Hobopolis cleared. ' + bossCount + ' bosses defeated.</b>');
+    printHtml(`<b>Hobopolis cleared. ${bossCount} bosses defeated.</b>`);
   } else {
-    const whiteboard = visitUrl('clan_basement.php?whiteboard=1').match(
+    const whiteboardMatch = visitUrl('clan_basement.php?whiteboard=1').match(
       '<textarea[^>]*name=whiteboard[^>]*>([^<]*)</textarea>'
-    )[1];
-    for (const line of whiteboard.split('\n')) {
-      if (line.trim().length > 0) print(line);
+    );
+    if (whiteboardMatch) {
+      for (const line of whiteboardMatch[1].split('\n')) {
+        if (line.trim().length > 0) print(line);
+      }
     }
   }
   print();

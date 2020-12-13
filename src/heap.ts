@@ -1,19 +1,19 @@
-import { print, lastChoice, visitUrl, lastMonster, myTurncount, myFamiliar } from 'kolmafia';
+import { lastChoice, lastMonster, myFamiliar, myTurncount, print, visitUrl } from 'kolmafia';
 import { $familiar, $location, $monster, $skill } from 'libram/src';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacroAuto, Macro } from './combat';
 import {
-  getPropertyInt,
-  setChoice,
-  mustStop,
-  lastWasCombat,
-  setPropertyInt,
-  extractInt,
   clamp,
+  extractInt,
+  getImageHeap,
+  getPropertyInt,
+  lastWasCombat,
+  mustStop,
+  printLines,
+  setChoice,
+  setPropertyInt,
   stopAt,
   wrapMain,
-  getImageHeap,
-  printLines,
 } from './lib';
 import { expectedTurns, moodMinusCombat } from './mood';
 

@@ -1,28 +1,28 @@
 import {
-  getProperty,
+  abort,
   getClanId,
+  getProperty,
+  lastChoice,
   myAscensions,
+  myTurncount,
   print,
   setProperty,
-  abort,
   visitUrl,
-  lastChoice,
-  myTurncount,
 } from 'kolmafia';
 import { $location } from 'libram/src';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacroAuto, Macro } from './combat';
 import {
+  clamp,
+  extractInt,
+  getChoice,
+  getImage,
+  getImageEe,
+  lastWasCombat,
   mustStop,
   setChoice,
-  getImage,
   stopAt,
   wrapMain,
-  extractInt,
-  lastWasCombat,
-  clamp,
-  getChoice,
-  getImageEe,
 } from './lib';
 import { expectedTurns, moodBaseline, moodMinusCombat } from './mood';
 

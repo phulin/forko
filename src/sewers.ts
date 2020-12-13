@@ -1,15 +1,15 @@
 import {
-  visitUrl,
+  getClanName,
+  inebrietyLimit,
   myAdventures,
   myInebriety,
-  inebrietyLimit,
-  getClanName,
-  print,
   myTurncount,
+  print,
   setAutoAttack,
+  visitUrl,
 } from 'kolmafia';
 import { $item, $location } from 'libram/src';
-import { usualDropItems, AdventuringManager, PrimaryGoal } from './adventure';
+import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureRunOrStasis } from './combat';
 import { extractInt, getChoice, memoizeTurncount, mustStop, setChoice } from './lib';
 import { expectedTurns, moodAddItem, moodMinusCombat } from './mood';

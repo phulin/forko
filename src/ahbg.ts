@@ -1,18 +1,18 @@
-import { visitUrl, print, lastChoice } from 'kolmafia';
+import { lastChoice, print, visitUrl } from 'kolmafia';
 import { $location } from 'libram/src';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacroAuto, Macro } from './combat';
 import {
-  setChoice,
-  mustStop,
-  getPropertyInt,
-  lastWasCombat,
-  setPropertyInt,
-  stopAt,
   extractInt,
   getImageAhbg,
-  wrapMain,
+  getPropertyInt,
+  lastWasCombat,
+  mustStop,
   printLines,
+  setChoice,
+  setPropertyInt,
+  stopAt,
+  wrapMain,
 } from './lib';
 import { expectedTurns, moodBaseline, moodMinusCombat } from './mood';
 
@@ -37,7 +37,7 @@ function getAhbgState() {
 }
 
 export function doAhbg(stopTurncount: number) {
-  let state = getAhbgState();
+  const state = getAhbgState();
   if (state.image < 10 && !mustStop(stopTurncount)) {
     setChoice(204, 2); // Run from Zombo.
     setChoice(208, 2); // Skip tomb + flowers
@@ -57,13 +57,14 @@ export function doAhbg(stopTurncount: number) {
         moodMinusCombat(expectedTurns(stopTurncount), 25);
       }
       setChoice(222, 1);
+      setChoice(208, getPropertyInt('minehobo_ahbgNcsUntilFlowers', 0) <= 0 ? 1 : 2);
     } else {
       moodBaseline(expectedTurns(stopTurncount));
       primaryGoal = PrimaryGoal.NONE;
       auxiliaryGoals = ['familiar weight'];
       setChoice(222, 2);
+      setChoice(208, 2);
     }
-    setChoice(208, getPropertyInt('minehobo_ahbgNcsUntilFlowers', 0) <= 0 ? 1 : 2);
 
     const manager = new AdventuringManager(
       $location`The Ancient Hobo Burial Ground`,
@@ -84,10 +85,14 @@ export function doAhbg(stopTurncount: number) {
         break;
       } else if (lastChoice() !== 220) {
         setPropertyInt('minehobo_ahbgNcsUntilFlowers', getPropertyInt('minehobo_ahbgNcsUntilFlowers', 0) - 1);
+      } else if (lastChoice() === 221) {
+        state.watched += 1;
+      } else if (lastChoice() === 222) {
+        state.dances += 1;
       }
     }
 
-    state = getAhbgState();
+    state.image = getImageAhbg();
     printLines(
       `Image: ${state.image}`,
       `Flimflams: ${state.flimflams}`,

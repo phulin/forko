@@ -1,54 +1,56 @@
+import { $effect, $familiar, $familiars, $item, $items, $location, $locations, $skill } from 'libram/src';
 import {
-  myBuffedstat,
-  myFamiliar,
-  maximize,
-  setProperty,
-  haveFamiliar,
-  getCounters,
-  mallPrice,
-  print,
-  visitUrl,
-  toInt,
-  myAscensions,
-  itemAmount,
-  myInebriety,
-  inebrietyLimit,
-  getCampground,
-  getProperty,
-  getFuel,
-  mpCost,
+  adv1,
   availableAmount,
   cliExecute,
-  useFamiliar,
-  haveEffect,
   equip,
-  myMp,
-  restoreMp,
-  myHp,
-  myMaxhp,
-  restoreHp,
   equippedAmount,
-  putCloset,
-  myTurncount,
-  adv1,
+  getCampground,
+  getCounters,
+  getFuel,
+  getProperty,
+  haveEffect,
+  haveFamiliar,
   haveSkill,
-  retrieveItem,
+  inebrietyLimit,
+  itemAmount,
+  mallPrice,
+  maximize,
+  mpCost,
   myAdventures,
+  myAscensions,
+  myBasestat,
+  myFamiliar,
+  myHp,
+  myInebriety,
+  myMaxhp,
+  myMaxmp,
+  myMp,
+  myTurncount,
+  print,
+  putCloset,
+  restoreHp,
+  restoreMp,
+  retrieveItem,
+  setProperty,
   shopAmount,
+  takeCloset,
+  toInt,
+  useFamiliar,
+  visitUrl,
 } from 'kolmafia';
-import { $item, $skill, $items, $familiar, $familiars, $locations, $effect, $location } from 'libram/src';
-import { fillAsdonMartinTo } from './asdon';
 import {
-  getPropertyString,
-  getPropertyInt,
   clamp,
-  setPropertyInt,
-  sausageMp,
-  getPropertyBoolean,
-  myFamiliarWeight,
   getImagePld,
+  getPropertyBoolean,
+  getPropertyInt,
+  getPropertyString,
+  myFamiliarWeight,
+  sausageMp,
   setChoice,
+  setPropertyInt,
 } from './lib';
+import { fillAsdonMartinTo } from './asdon';
 import { tryEnsureSong } from './mood';
 
 function has(itemOrSkill: Item | Skill) {
@@ -66,8 +68,8 @@ export function maximizeCached(objective: string) {
     .split(',')
     .map((s: string) => parseInt(s, 10));
   if (oldStats.length !== 3) oldStats = [0, 0, 0];
-  const stats = Stat.get(['Muscle', 'Mysticality', 'Moxie']).map(stat => myBuffedstat(stat));
-  const statsChanged = stats.some((newStat, i) => newStat > oldStats[i] && newStat % 10 === 0);
+  const stats = Stat.get(['Muscle', 'Mysticality', 'Moxie']).map(stat => myBasestat(stat));
+  const statsChanged = stats.some((newStat, i) => newStat > oldStats[i] && oldStats[i] < 300 && newStat % 10 === 0);
 
   const oldFamiliar = getPropertyString('minehobo_lastFamiliar', '');
   const familiarChanged = oldFamiliar !== myFamiliar().toString();
@@ -103,7 +105,7 @@ const freeRunSources = [
   ['_snokebombUsed', 3, $skill`Snokebomb`],
 ];
 const freeRunItems = $items`Louder Than Bomb, tattered scrap of paper, GOTO, green smoke bomb`;
-let freeRunFamiliar = $familiar`none`;
+let freeRunFamiliar: Familiar | null = null;
 for (const testFam of $familiars`Pair of Stomping Boots, Frumious Bandersnatch`) {
   if (haveFamiliar(testFam)) freeRunFamiliar = testFam;
 }
@@ -230,6 +232,16 @@ export class AdventuringManager {
     ) {
       forceEquip = [...forceEquip, $item`Kramco Sausage-o-Matic™`];
     }
+
+    if (location !== $location`Hobopolis Town Square`) {
+      if (getPropertyInt('_chestXRayUsed') < 3) {
+        forceEquip = [...exclude(forceEquip, [$item`mafia thumb ring`]), $item`Lil' Doctor™ bag`];
+      } else if (!getPropertyBoolean('_firedJokestersGun')) {
+        forceEquip = [...exclude(forceEquip, [$item`mafia thumb ring`]), $item`The Jokester's gun`];
+      } else if (!getPropertyBoolean('_missileLauncherUsed')) {
+        fillAsdonMartinTo(100);
+      }
+    }
     banned = [...banned, ...$items`Pigsticker of Violence, porcelain porkpie`];
 
     this.location = location;
@@ -255,6 +267,7 @@ export class AdventuringManager {
       if (getPropertyInt(pref as string) < maxCount && has(itemOrSkill as Item | Skill)) {
         if (itemOrSkill instanceof Item) additionalEquip.push(itemOrSkill as Item);
         if (itemOrSkill instanceof Skill) sausageMp(mpCost(itemOrSkill as Skill));
+        print(`additional equip: ${additionalEquip}`);
         return { limitedFreeRuns: true, additionalEquip };
       }
     }
@@ -270,13 +283,14 @@ export class AdventuringManager {
         cliExecute('latte refill cinnamon pumpkin ink');
       }
       additionalEquip.push($item`latte lovers member's mug`);
+      return { limitedFreeRuns: true, additionalEquip };
     }
 
     return { limitedFreeRuns: false, additionalEquip };
   }
 
   setupFreeRuns() {
-    if (!getPropertyBoolean('_minehobo_freeRunFamiliarUsed', false) && freeRunFamiliar !== $familiar`none`) {
+    if (!getPropertyBoolean('_minehobo_freeRunFamiliarUsed', false) && freeRunFamiliar !== null) {
       useFamiliar(freeRunFamiliar);
       maximizeCached(
         renderObjective(
@@ -286,7 +300,10 @@ export class AdventuringManager {
           this.banned
         )
       );
-      if (getPropertyInt('_banderRunaways') * 5 < myFamiliarWeight() && tryEnsureSong($skill`The Ode to Booze`)) {
+      if (
+        getPropertyInt('_banderRunaways') < Math.floor(myFamiliarWeight() / 5) &&
+        tryEnsureSong($skill`The Ode to Booze`)
+      ) {
         this.primaryGoal = PrimaryGoal.NONE;
         this.auxiliaryGoals = ['familiar weight', ...this.auxiliaryGoals];
         this.forceEquip = exclude(this.forceEquip, fightOnlyItems);
@@ -332,7 +349,7 @@ export class AdventuringManager {
       // TODO: Could include LHM here, but difficult
     }
 
-    const lowMp = (myFamiliar() !== $familiar`Stocking Mimic` && myMp() < 200) || myMp() < 400;
+    const lowMp = myMp() < Math.min(myMaxmp() - 50, myFamiliar() === $familiar`Stocking Mimic` ? 400 : 200);
     if (pickedFamiliar === null && myInebriety() <= inebrietyLimit() && lowMp) {
       pickedFamiliar = $familiar`Stocking Mimic`;
     }
@@ -412,7 +429,9 @@ export class AdventuringManager {
     ) {
       setChoice(205, 2);
       setChoice(294, 1);
+      takeCloset(100, $item`hobo nickel`);
       adv1($location`The Purple Light District`, -1, '');
+      putCloset(itemAmount($item`hobo nickel`), $item`hobo nickel`);
       AdventuringManager.lastSemirareCheck = myTurncount();
     }
   }

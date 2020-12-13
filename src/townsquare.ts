@@ -1,20 +1,20 @@
 import {
-  visitUrl,
-  myTurncount,
-  cliExecute,
-  myBuffedstat,
-  numericModifier,
   abort,
-  round,
-  haveEffect,
-  print,
   ceil,
+  cliExecute,
+  haveEffect,
+  myBuffedstat,
+  myTurncount,
+  numericModifier,
+  print,
+  round,
   toFloat,
+  visitUrl,
 } from 'kolmafia';
 import { $effect, $location, $monster, $skill, $stat } from 'libram/src';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacro, Macro } from './combat';
-import { mustStop, setChoice, getImage, extractInt, memoizeTurncount } from './lib';
+import { extractInt, getImage, memoizeTurncount, mustStop, setChoice } from './lib';
 import { moodBaseline } from './mood';
 
 enum PartType {

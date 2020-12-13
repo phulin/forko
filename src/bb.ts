@@ -1,8 +1,8 @@
-import { floor, visitUrl, print } from 'kolmafia';
+import { floor, print, visitUrl } from 'kolmafia';
 import { $location } from 'libram/src';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacroAuto, Macro } from './combat';
-import { setChoice, mustStop, stopAt, extractInt, wrapMain, getImageBb, printLines } from './lib';
+import { extractInt, getImageBb, mustStop, printLines, setChoice, stopAt, wrapMain } from './lib';
 import { expectedTurns, moodMinusCombat, tryEnsureTriviaMaster } from './mood';
 
 const STACKHEIGHT = 34;
