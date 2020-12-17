@@ -233,15 +233,6 @@ export class AdventuringManager {
       forceEquip = [...forceEquip, $item`Kramco Sausage-o-Matic™`];
     }
 
-    if (location !== $location`Hobopolis Town Square`) {
-      if (getPropertyInt('_chestXRayUsed') < 3) {
-        forceEquip = [...exclude(forceEquip, [$item`mafia thumb ring`]), $item`Lil' Doctor™ bag`];
-      } else if (!getPropertyBoolean('_firedJokestersGun')) {
-        forceEquip = [...exclude(forceEquip, [$item`mafia thumb ring`]), $item`The Jokester's gun`];
-      } else if (!getPropertyBoolean('_missileLauncherUsed')) {
-        fillAsdonMartinTo(100);
-      }
-    }
     banned = [...banned, ...$items`Pigsticker of Violence, porcelain porkpie`];
 
     this.location = location;
@@ -362,13 +353,15 @@ export class AdventuringManager {
       const mimicValue = mimicDropValue() + ((mimicWeight * actionPercentage * 1) / 4) * 10 * 4 * 1.2;
       familiarValue.push([$familiar`Stocking Mimic`, mimicValue]);
 
-      const cologne = $item`beggin' cologne`;
-      const colognePrice = mallPrice(cologne) - 10 * (shopAmount(cologne) + availableAmount(cologne));
-      familiarValue.push([$familiar`Red-Nosed Snapper`, colognePrice / 11]);
+      if (getCounters('Digitize Monster', 0, 0).trim() !== 'Digitize Monster') {
+        const cologne = $item`beggin' cologne`;
+        const colognePrice = mallPrice(cologne) - 10 * (shopAmount(cologne) + availableAmount(cologne));
+        familiarValue.push([$familiar`Red-Nosed Snapper`, colognePrice / 11]);
+      }
 
-      if (this.location === $location`The Heap`) {
+      if (this.location === $location`The Purple Light District`) {
         const probability = [1, 0.5, 0.33, 0.25, 0.2, 0.05][clamp(getPropertyInt('_spaceJellyfishDrops'), 0, 5)];
-        const jellyfishValue = mallPrice($item`stench jelly`) * probability;
+        const jellyfishValue = mallPrice($item`sleaze jelly`) * probability;
         familiarValue.push([$familiar`Space Jellyfish`, jellyfishValue]);
       }
 
@@ -402,6 +395,17 @@ export class AdventuringManager {
   preAdventure() {
     if (haveEffect($effect`Beaten Up`) > 0) {
       throw 'Got beaten up.';
+    }
+
+    if (this.location !== $location`Hobopolis Town Square` && !this.willFreeRun) {
+      if (getPropertyInt('_chestXRayUsed') < 3) {
+        this.forceEquip = [...exclude(this.forceEquip, turnOnlyItems), $item`Lil' Doctor™ bag`];
+      } else if (!getPropertyBoolean('_firedJokestersGun')) {
+        this.forceEquip = [...exclude(this.forceEquip, turnOnlyItems), $item`The Jokester's gun`];
+      } else if (!getPropertyBoolean('_missileLauncherUsed')) {
+        this.forceEquip = exclude(this.forceEquip, turnOnlyItems);
+        fillAsdonMartinTo(100);
+      }
     }
 
     maximizeCached(renderObjective(this.primaryGoal, this.auxiliaryGoals, this.forceEquip, this.banned));

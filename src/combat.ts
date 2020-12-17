@@ -27,6 +27,7 @@ import {
   runChoice,
   runCombat,
   setProperty,
+  toInt,
   toMonster,
   urlEncode,
   useSkill,
@@ -34,7 +35,7 @@ import {
   xpath,
 } from 'kolmafia';
 import { $effect, $familiar, $item, $items, $monster, $skill, $skills } from 'libram/src';
-import { getPropertyBoolean, getPropertyInt, myFamiliarWeight, setPropertyInt } from './lib';
+import { getPropertyBoolean, getPropertyInt, myFamiliarWeight, printLines, setPropertyInt } from './lib';
 
 // multiFight() stolen from Aenimus: https://github.com/Aenimus/aen_cocoabo_farm/blob/master/scripts/aen_combat.ash.
 // Thanks! Licensed under MIT license.
@@ -91,7 +92,6 @@ export class Macro {
       return;
     }
 
-    print(`Setting autoattack to: ${this.toString()}`);
     visitUrl(
       `account_combatmacros.php?macroid=${Macro.cachedMacroId}&name=${urlEncode(MACRO_NAME)}&macrotext=${urlEncode(
         this.toString()
@@ -100,7 +100,7 @@ export class Macro {
       true
     );
     visitUrl(`account.php?am=1&action=autoattack&value=${99000000 + Macro.cachedMacroId}&ajax=1`);
-    print(`New autoattack is ${getAutoAttack()}`);
+    printLines(`Setting autoattack to: ${this.toString()}`, `New autoattack is ${getAutoAttack()}`);
     Macro.cachedAutoAttack = this.toString();
   }
 
@@ -231,7 +231,6 @@ export class Macro {
           '!hpbelow 500',
           Macro.skill($skill`Curse of Weaksauce`)
             .skill($skill`Micrometeorite`)
-            .skill($skill`Conspiratorial Whispers`)
             .toString()
         )
       )
@@ -239,7 +238,10 @@ export class Macro {
       .mIf('!hpbelow 500', Macro.skill($skill`Extract`))
       .externalIf(
         myFamiliar() === $familiar`Space Jellyfish`,
-        Macro.mIf('!hpbelow 500', Macro.skill($skill`Extract Jelly`)).toString()
+        Macro.mIf(
+          `!hpbelow 500 && monsterid ${toInt($monster`sleaze hobo`)}`,
+          Macro.skill($skill`Extract Jelly`)
+        ).toString()
       )
       .externalIf(
         getPropertyInt('_sourceTerminalDigitizeMonsterCount') >= 7 &&
@@ -252,9 +254,7 @@ export class Macro {
       )
       .externalIf(
         myFamiliar() === $familiar`Stocking Mimic`,
-        Macro.mWhile('!pastround 8', Macro.item($item`seal tooth`))
-          .skill($skill`Shell Up`)
-          .toString()
+        Macro.mWhile('!pastround 9 && !hpbelow 500', Macro.item($item`seal tooth`))
       );
   }
 

@@ -3,7 +3,7 @@ import { $location } from 'libram/src';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureRunOrStasis } from './combat';
 import { extractInt, lastWasCombat, setChoice } from './lib';
-import { moodAddItem } from './mood';
+import { moodAddItem, moodMinusCombat } from './mood';
 import { sewerAccess, throughSewers } from './sewers';
 import { setClan } from './wl';
 
@@ -18,6 +18,7 @@ export function main(args: string) {
   setChoice(199, 3); // Ladder - free BK
 
   do {
+    moodMinusCombat(10, 10);
     const manager = new AdventuringManager(
       $location`A Maze of Sewer Tunnels`,
       PrimaryGoal.MINUS_COMBAT,

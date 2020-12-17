@@ -4,7 +4,6 @@ import {
   cliExecute,
   haveEffect,
   myBuffedstat,
-  myTurncount,
   numericModifier,
   print,
   round,
@@ -15,7 +14,7 @@ import { $effect, $location, $monster, $skill, $stat } from 'libram/src';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacro, Macro } from './combat';
 import { extractInt, getImage, memoizeTurncount, mustStop, setChoice } from './lib';
-import { moodBaseline } from './mood';
+import { ensureEffect, expectedTurns, moodBaseline } from './mood';
 
 enum PartType {
   HOT,
@@ -73,10 +72,13 @@ const pldAccessible = memoizeTurncount(() => {
 });
 
 function getParts(part: HoboPart, desiredParts: number, stopTurncount: number) {
-  if ((currentParts().get(part) as number) >= desiredParts || pldAccessible() || mustStop(stopTurncount)) return;
+  const current = currentParts().get(part) as number;
+  if (current >= desiredParts || pldAccessible() || mustStop(stopTurncount)) return;
 
   // This is up here so we have the right effects on for damage prediction.
-  moodBaseline(stopTurncount - myTurncount());
+  const expected = expectedTurns(stopTurncount);
+  moodBaseline(expected);
+  ensureEffect($effect`Ur-Kel's Aria of Annoyance`, current - desiredParts);
 
   while ((currentParts().get(part) as number) < desiredParts && !pldAccessible() && !mustStop(stopTurncount)) {
     if ([PartType.COLD, PartType.STENCH, PartType.SPOOKY, PartType.SLEAZE].includes(part.type)) {
@@ -128,7 +130,7 @@ export function doTownsquare(stopTurncount: number) {
   setChoice(272, 2); // Skip marketplace.
   setChoice(225, 3); // Skip tent.
 
-  print('Making available scarehobos.');
+  // print('Making available scarehobos.');
   visitUrl('clan_hobopolis.php?preaction=simulacrum&place=3&qty=1&makeall=1');
 
   const image = getImage($location`Hobopolis Town Square`);
