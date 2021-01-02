@@ -2,7 +2,6 @@ import { $effect, $familiar, $familiars, $item, $items, $location, $locations, $
 import {
   adv1,
   availableAmount,
-  cliExecute,
   equip,
   equippedAmount,
   getCampground,
@@ -32,10 +31,12 @@ import {
   restoreHp,
   restoreMp,
   retrieveItem,
+  setLocation,
   setProperty,
   shopAmount,
   takeCloset,
   toInt,
+  totalTurnsPlayed,
   useFamiliar,
   visitUrl,
 } from 'kolmafia';
@@ -49,6 +50,7 @@ import {
   sausageMp,
   setChoice,
   setPropertyInt,
+  turboMode,
 } from './lib';
 import { fillAsdonMartinTo } from './asdon';
 import { tryEnsureSong } from './mood';
@@ -69,7 +71,10 @@ export function maximizeCached(objective: string) {
     .map((s: string) => parseInt(s, 10));
   if (oldStats.length !== 3) oldStats = [0, 0, 0];
   const stats = Stat.get(['Muscle', 'Mysticality', 'Moxie']).map(stat => myBasestat(stat));
-  const statsChanged = stats.some((newStat, i) => newStat > oldStats[i] && oldStats[i] < 300 && newStat % 10 === 0);
+  const checkMod = turboMode() ? 25 : 10;
+  const statsChanged = stats.some(
+    (newStat, i) => newStat > oldStats[i] && oldStats[i] < 300 && newStat % checkMod === 0
+  );
 
   const oldFamiliar = getPropertyString('minehobo_lastFamiliar', '');
   const familiarChanged = oldFamiliar !== myFamiliar().toString();
@@ -99,10 +104,11 @@ function exclude(haystack: Item[], needles: Item[]) {
   return haystack.filter(x => !needles.includes(x));
 }
 
-const freeRunSources = [
+const freeRunSources: [string, number | boolean, Item | Skill][] = [
   ['_reflexHammerUsed', 3, $item`Lil' Doctor™ bag`],
   ['_kgbTranquilizerDartUses', 3, $item`Kremlin's Greatest Briefcase`],
   ['_snokebombUsed', 3, $skill`Snokebomb`],
+  ['_mafiaMiddleFingerRingUsed', true, $item`mafia middle finger ring`],
 ];
 const freeRunItems = $items`Louder Than Bomb, tattered scrap of paper, GOTO, green smoke bomb`;
 let freeRunFamiliar: Familiar | null = null;
@@ -203,7 +209,17 @@ export function renderObjective(
   ].join(', ');
 }
 
-const SAUSAGE_GOBLIN_GOAL = 14;
+export function getKramcoWandererChance() {
+  const fights = parseInt(getProperty('_sausageFights'));
+  const lastFight = parseInt(getProperty('_lastSausageMonsterTurn'));
+  const totalTurns = totalTurnsPlayed();
+  if (fights < 1) {
+    return lastFight === totalTurns && myTurncount() < 1 ? 0.5 : 1.0;
+  }
+  const turnsSinceLastFight = totalTurns - lastFight;
+  return Math.min(1.0, (turnsSinceLastFight + 1) / (5 + fights * 3 + Math.max(0, fights - 5) ** 3));
+}
+
 export class AdventuringManager {
   static lastFamiliar: Familiar | null = null;
   static lastSemirareCheck = -1;
@@ -227,7 +243,7 @@ export class AdventuringManager {
       forceEquip = [...exclude(forceEquip, [$item`hobo code binder`]), $item`Drunkula's wineglass`];
       auxiliaryGoals = [...auxiliaryGoals, '0.01 weapon damage'];
     } else if (
-      getPropertyInt('_sausageFights') < SAUSAGE_GOBLIN_GOAL &&
+      getKramcoWandererChance() > 0.04 &&
       !forceEquip.includes($item`hobo code binder`) // AND probability is reasonably high.
     ) {
       forceEquip = [...forceEquip, $item`Kramco Sausage-o-Matic™`];
@@ -255,15 +271,16 @@ export class AdventuringManager {
     }
 
     for (const [pref, maxCount, itemOrSkill] of freeRunSources) {
-      if (getPropertyInt(pref as string) < maxCount && has(itemOrSkill as Item | Skill)) {
+      const available = typeof maxCount === 'number' ? getPropertyInt(pref) < maxCount : !getPropertyBoolean(pref);
+      print(`${itemOrSkill} available: ${available}`);
+      if (available && has(itemOrSkill as Item | Skill)) {
         if (itemOrSkill instanceof Item) additionalEquip.push(itemOrSkill as Item);
         if (itemOrSkill instanceof Skill) sausageMp(mpCost(itemOrSkill as Skill));
-        print(`additional equip: ${additionalEquip}`);
         return { limitedFreeRuns: true, additionalEquip };
       }
     }
 
-    const hasInk = getProperty('latteUnlocks').includes('ink');
+    /* const hasInk = getProperty('latteUnlocks').includes('ink');
     if (
       availableAmount($item`latte lovers member's mug`) > 0 &&
       hasInk &&
@@ -273,9 +290,9 @@ export class AdventuringManager {
       if (getPropertyBoolean('_latteBanishUsed')) {
         cliExecute('latte refill cinnamon pumpkin ink');
       }
-      additionalEquip.push($item`latte lovers member's mug`);
+      additionalEquip = [...exclude(additionalEquip, $item`Kramco Sausage-o-Matic™`), $item`latte lovers member's mug`];
       return { limitedFreeRuns: true, additionalEquip };
-    }
+    } */
 
     return { limitedFreeRuns: false, additionalEquip };
   }
@@ -321,43 +338,31 @@ export class AdventuringManager {
 
   pickFamiliar() {
     let pickedFamiliar: Familiar | null = null;
+    const lowMp = myMp() < Math.min(myMaxmp() - 50, myFamiliar() === $familiar`Stocking Mimic` ? 400 : 200);
+    const turbo = turboMode();
+
     if (this.willFreeRun) {
       if (this.primaryGoal === PrimaryGoal.MINUS_COMBAT && myFamiliarWeight($familiar`Disgeist`) >= 38) {
         pickedFamiliar = $familiar`Disgeist`;
-      } else if (
-        this.primaryGoal === PrimaryGoal.PLUS_COMBAT &&
-        myFamiliarWeight($familiar`Jumpsuited Hound Dog`) >= 30
-      ) {
-        pickedFamiliar = $familiar`Jumpsuited Hound Dog`;
+      } else if (myInebriety() <= inebrietyLimit() && lowMp && !turbo) {
+        pickedFamiliar = $familiar`Stocking Mimic`;
       } else if (
         !$locations`A Maze of Sewer Tunnels, Hobopolis Town Square`.includes(this.location) &&
         haveFamiliar($familiar`Space Jellyfish`)
       ) {
         pickedFamiliar = $familiar`Space Jellyfish`;
-      } else if (getPropertyInt('_gothKidFights') < 7) {
+      } /* else if (getPropertyInt('_gothKidFights') < 7) {
         pickedFamiliar = $familiar`Artistic Goth Kid`;
-      }
+      } */
       // TODO: Could include LHM here, but difficult
     }
 
-    const lowMp = myMp() < Math.min(myMaxmp() - 50, myFamiliar() === $familiar`Stocking Mimic` ? 400 : 200);
     if (pickedFamiliar === null && myInebriety() <= inebrietyLimit() && lowMp) {
       pickedFamiliar = $familiar`Stocking Mimic`;
     }
 
     if (pickedFamiliar === null) {
-      const familiarValue: [Familiar, number][] = [];
-
-      const mimicWeight = myFamiliarWeight($familiar`Stocking Mimic`);
-      const actionPercentage = 1 / 3 + (haveEffect($effect`Jingle Jangle Jingle`) ? 0.1 : 0);
-      const mimicValue = mimicDropValue() + ((mimicWeight * actionPercentage * 1) / 4) * 10 * 4 * 1.2;
-      familiarValue.push([$familiar`Stocking Mimic`, mimicValue]);
-
-      if (getCounters('Digitize Monster', 0, 0).trim() !== 'Digitize Monster') {
-        const cologne = $item`beggin' cologne`;
-        const colognePrice = mallPrice(cologne) - 10 * (shopAmount(cologne) + availableAmount(cologne));
-        familiarValue.push([$familiar`Red-Nosed Snapper`, colognePrice / 11]);
-      }
+      const familiarValue: [Familiar, number][] = [[$familiar`Red-Nosed Snapper`, 0]];
 
       if (this.location === $location`The Purple Light District`) {
         const probability = [1, 0.5, 0.33, 0.25, 0.2, 0.05][clamp(getPropertyInt('_spaceJellyfishDrops'), 0, 5)];
@@ -365,15 +370,31 @@ export class AdventuringManager {
         familiarValue.push([$familiar`Space Jellyfish`, jellyfishValue]);
       }
 
-      for (const familiarName of Object.keys(rotatingFamiliars)) {
-        const familiar: Familiar = Familiar.get(familiarName);
-        if (this.location === $location`Hobopolis Town Square` && familiar === $familiar`Fist Turkey`) continue;
-        const { expected, drop, pref } = rotatingFamiliars[familiarName];
-        const dropsAlready = getPropertyInt(pref);
-        if (dropsAlready >= expected.length) continue;
-        const value = mallPrice(drop) / expected[dropsAlready];
-        familiarValue.push([familiar, value]);
+      if (!this.willFreeRun) {
+        if (!turbo) {
+          const mimicWeight = myFamiliarWeight($familiar`Stocking Mimic`);
+          const actionPercentage = 1 / 3 + (haveEffect($effect`Jingle Jangle Jingle`) ? 0.1 : 0);
+          const mimicValue = mimicDropValue() + ((mimicWeight * actionPercentage * 1) / 4) * 10 * 4 * 1.2;
+          familiarValue.push([$familiar`Stocking Mimic`, mimicValue]);
+        }
+
+        if (getCounters('Digitize Monster', 0, 0).trim() !== 'Digitize Monster') {
+          const cologne = $item`beggin' cologne`;
+          const colognePrice = mallPrice(cologne) - 10 * (shopAmount(cologne) + availableAmount(cologne));
+          familiarValue.push([$familiar`Red-Nosed Snapper`, colognePrice / 11]);
+        }
+
+        for (const familiarName of Object.keys(rotatingFamiliars)) {
+          const familiar: Familiar = Familiar.get(familiarName);
+          if (this.location === $location`Hobopolis Town Square` && familiar === $familiar`Fist Turkey`) continue;
+          const { expected, drop, pref } = rotatingFamiliars[familiarName];
+          const dropsAlready = getPropertyInt(pref);
+          if (dropsAlready >= expected.length) continue;
+          const value = mallPrice(drop) / expected[dropsAlready];
+          familiarValue.push([familiar, value]);
+        }
       }
+
       pickedFamiliar = argmax(familiarValue) as Familiar;
     }
     useFamiliar(pickedFamiliar);
@@ -397,7 +418,9 @@ export class AdventuringManager {
       throw 'Got beaten up.';
     }
 
-    if (this.location !== $location`Hobopolis Town Square` && !this.willFreeRun) {
+    setLocation(this.location);
+
+    if (this.location !== $location`Hobopolis Town Square` && !this.willFreeRun && myInebriety() <= inebrietyLimit()) {
       if (getPropertyInt('_chestXRayUsed') < 3) {
         this.forceEquip = [...exclude(this.forceEquip, turnOnlyItems), $item`Lil' Doctor™ bag`];
       } else if (!getPropertyBoolean('_firedJokestersGun')) {
@@ -416,6 +439,8 @@ export class AdventuringManager {
 
     if (!this.familiarLocked) this.pickFamiliar();
 
+    // Maximize again to make sure we have the right familiar equipment.
+    // Will only trigger if familiar has changed.
     maximizeCached(renderObjective(this.primaryGoal, this.auxiliaryGoals, this.forceEquip, this.banned));
 
     if (equippedAmount($item`lucky gold ring`) > 0) {

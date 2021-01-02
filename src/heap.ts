@@ -103,5 +103,5 @@ export function doHeap(stopTurncount: number) {
 }
 
 export function main(args: string) {
-  wrapMain(() => doHeap(stopAt(args)));
+  wrapMain(args, () => doHeap(stopAt(args)));
 }

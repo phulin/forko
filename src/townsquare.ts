@@ -10,10 +10,10 @@ import {
   toFloat,
   visitUrl,
 } from 'kolmafia';
-import { $effect, $location, $monster, $skill, $stat } from 'libram/src';
+import { $effect, $item, $location, $monster, $skill, $stat } from 'libram/src';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacro, Macro } from './combat';
-import { extractInt, getImage, memoizeTurncount, mustStop, setChoice } from './lib';
+import { extractInt, getImage, getPropertyBoolean, memoizeTurncount, mustStop, setChoice, turboMode } from './lib';
 import { ensureEffect, expectedTurns, moodBaseline } from './mood';
 
 enum PartType {
@@ -81,6 +81,14 @@ function getParts(part: HoboPart, desiredParts: number, stopTurncount: number) {
   ensureEffect($effect`Ur-Kel's Aria of Annoyance`, current - desiredParts);
 
   while ((currentParts().get(part) as number) < desiredParts && !pldAccessible() && !mustStop(stopTurncount)) {
+    const manager = new AdventuringManager(
+      $location`Hobopolis Town Square`,
+      PrimaryGoal.NONE,
+      ['familiar weight', '-0.05 ml 0 min'],
+      usualDropItems
+    );
+    manager.preAdventure();
+
     if ([PartType.COLD, PartType.STENCH, PartType.SPOOKY, PartType.SLEAZE].includes(part.type)) {
       const predictedDamage =
         (32 + 0.5 * myBuffedstat($stat`Mysticality`)) * (1 + numericModifier('spell damage percent') / 100);
@@ -93,7 +101,8 @@ function getParts(part: HoboPart, desiredParts: number, stopTurncount: number) {
       Macro.stasis()
         .mIf(Macro.monster($monster`sausage goblin`), Macro.skillRepeat($skill`Saucegeyser`))
         .skill($skill`Stuffed Mortar Shell`)
-        .skillRepeat($skill`Cannelloni Cannon`)
+        .externalIf(!turboMode(), Macro.skillRepeat($skill`Cannelloni Cannon`))
+        .item($item`seal tooth`)
         .setAutoAttack();
     } else if (part.type === PartType.HOT) {
       Macro.stasis()
@@ -105,13 +114,6 @@ function getParts(part: HoboPart, desiredParts: number, stopTurncount: number) {
         .setAutoAttack();
     }
 
-    const manager = new AdventuringManager(
-      $location`Hobopolis Town Square`,
-      PrimaryGoal.NONE,
-      ['familiar weight', '-0.05 ml 0 min'],
-      usualDropItems
-    );
-    manager.preAdventure();
     adventureMacro($location`Hobopolis Town Square`, Macro.abort());
   }
 }

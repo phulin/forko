@@ -1,7 +1,7 @@
 import { lastChoice, print, setAutoAttack, visitUrl } from 'kolmafia';
 import { $location } from 'libram/src';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
-import { adventureRunOrStasis } from './combat';
+import { adventureMacroAuto, adventureRunOrStasis, Macro } from './combat';
 import { getState as getEeState } from './ee';
 import { extractInt, getImagePld, lastWasCombat, mustStop, printLines, setChoice, stopAt, wrapMain } from './lib';
 import { expectedTurns, moodPlusCombat } from './mood';
@@ -55,7 +55,11 @@ export function doPld(stopTurncount: number) {
     );
     if (tryFreeRun) manager.setupFreeRuns();
     manager.preAdventure();
-    adventureRunOrStasis(location, manager.willFreeRun);
+    if (manager.willFreeRun) {
+      adventureRunOrStasis(location, true);
+    } else {
+      adventureMacroAuto(location, Macro.stasis().kill());
+    }
 
     state = getPldState();
     printLines(
@@ -76,5 +80,5 @@ export function doPld(stopTurncount: number) {
 }
 
 export function main(args: string) {
-  wrapMain(() => doPld(stopAt(args)));
+  wrapMain(args, () => doPld(stopAt(args)));
 }

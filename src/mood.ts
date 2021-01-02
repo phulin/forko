@@ -3,17 +3,20 @@ import {
   cliExecute,
   eat,
   effectModifier,
+  getCampground,
   getClanName,
   getProperty,
   haveEffect,
   haveSkill,
   hpCost,
+  itemAmount,
   mallPrice,
   maximize,
   mpCost,
   myAdventures,
   myEffects,
   myHp,
+  myLevel,
   myMaxhp,
   myMaxmp,
   myMp,
@@ -31,9 +34,50 @@ import {
   useSkill,
 } from 'kolmafia';
 import { $effect, $effects, $item, $items, $skill } from 'libram/src';
+
 import { fillAsdonMartinTo } from './asdon';
 import { cheapest, clamp, getItem, getPropertyBoolean, getPropertyInt, getPropertyString } from './lib';
 import { setClan } from './wl';
+
+class MoodCastingPlan {
+  // Tuple of [skill, desiredTurns]
+  planElements: [Skill, number][] = [];
+
+  planSkillCasts(skill: Skill, desiredTurns: number) {
+    if (desiredTurns > haveEffect(toEffect(skill))) {
+      this.planElements.push([skill, desiredTurns]);
+    }
+  }
+
+  castSkills() {
+    cliExecute('checkpoint');
+    if (!maximize('mp 999 min, -500 mana cost', false)) {
+      maximize('mp, -500 mana cost', false);
+    }
+    if (numericModifier('mana cost') > -3) ensureEffect($effect`Using Protection`);
+
+    const hpSkills = this.planElements.filter(([skill]) => hpCost(skill));
+    for (const [skill, desiredTurns] of hpSkills) {
+      tryEnsureSkill(skill, desiredTurns);
+    }
+
+    const mpSkills = this.planElements.filter(([skill]) => mpCost(skill));
+
+    let totalMpAvailable = myMp() + Math.min(999, myMaxmp()) * sausagesAvailable();
+    if (getProperty('stashClan') !== '' || itemAmount($item`Platinum Yendorian Express Card`) > 0) {
+      totalMpAvailable += Math.max(myMaxmp() - 100, 0);
+    }
+
+    mpSkills.sort(([skillA], [skillB]) => haveEffect(toEffect(skillA)) - haveEffect(toEffect(skillB)));
+    for (const [index, [skill, desiredTurns]] of mpSkills.slice(0, -1).entries()) {
+      const [nextSkill, nextDesiredTurns] = mpSkills[index + 1];
+      // const incrementalTurns = Math.min(haveEffect(toEffect(nextSkill), desiredTurns) - haveEffect(toEffect)
+      // totalMpAvailable -= (desired)
+    }
+
+    cliExecute('outfit checkpoint');
+  }
+}
 
 export function shrug(ef: Effect) {
   if (haveEffect(ef) > 0) {
@@ -97,22 +141,24 @@ export function trySausageMp() {
 
 function tryUsePyec() {
   const pyec = $item`Platinum Yendorian Express Card`;
+  const stashClan = getPropertyString('stashClan');
   if (
-    (availableAmount($item`Platinum Yendorian Express Card`) > 0 || getPropertyString('pyecClan')) &&
+    (availableAmount($item`Platinum Yendorian Express Card`) > 0 || stashClan !== null) &&
     !getPropertyBoolean('expressCardUsed')
   ) {
-    const havePyec = availableAmount(pyec) === 0;
+    const havePyec = availableAmount(pyec) > 0;
     const currentClan = getClanName();
     let taken = false;
-    if (!havePyec || setClan(getPropertyString('pyecClan'))) {
+    if (!havePyec || setClan(getPropertyString('stashClan'))) {
       try {
         maximize('mp', false);
+        if (stashClan !== null) setClan(stashClan);
         if (!havePyec && stashAmount(pyec) > 0) {
           taken = takeStash(1, pyec);
         }
         use(1, pyec);
       } finally {
-        if (taken) putStash(1, pyec);
+        if (getClanName() === stashClan && taken) putStash(1, pyec);
         if (getClanName() !== currentClan) setClan(currentClan);
       }
     }
@@ -191,17 +237,21 @@ export function tryEnsureTriviaMaster(turns = 1) {
 }
 
 export function drive(effect: Effect, maxTurns: number) {
-  const count = Math.ceil((maxTurns - haveEffect(effect)) / 30);
-  fillAsdonMartinTo(count * 37);
-  for (let i = 0; i < count; i++) cliExecute(`asdonmartin drive ${effect.name.replace('Driving ', '')}`);
+  if (getCampground()['Asdon Martin keyfob'] !== undefined) {
+    const count = Math.ceil((maxTurns - haveEffect(effect)) / 30);
+    fillAsdonMartinTo(count * 37);
+    for (let i = 0; i < count; i++) cliExecute(`asdonmartin drive ${effect.name.replace('Driving ', '')}`);
+  }
 }
 
 export function moodBaseline(maxTurns: number) {
   // Stats.
   tryEnsureSkill($skill`Get Big`, maxTurns);
   tryEnsurePotion($item`Ben-Gal™ balm`, maxTurns);
-  // tryEnsureSong($skill`Stevedave's Shanty of Superiority`, maxTurns);
-  // tryEnsureTriviaMaster(maxTurns);
+  if (myLevel() < 16) {
+    tryEnsureSong($skill`Stevedave's Shanty of Superiority`, maxTurns);
+    tryEnsureTriviaMaster(Math.min(maxTurns, 200 * (16 - myLevel())));
+  }
 
   // Combat.
   tryEnsureSkill($skill`Carol of the Hells`, maxTurns);

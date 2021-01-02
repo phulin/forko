@@ -147,6 +147,11 @@ export function mustStop(stopTurncount: number) {
   return myTurncount() >= stopTurncount || myAdventures() === 0;
 }
 
+let turbo = true;
+export function turboMode() {
+  return turbo;
+}
+
 export function ensureJingle() {
   if (haveEffect($effect`Jingle Jangle Jingle`) === 0) {
     cliExecute(`csend to buffy || ${Math.round(myAdventures() * 1.1 + 200)} jingle`);
@@ -244,8 +249,9 @@ export const getImageHeap = memoizeTurncount(() => getImage($location`The Heap`)
 export const getImagePld = memoizeTurncount(() => getImage($location`The Purple Light District`), 10);
 export const getImageAhbg = memoizeTurncount(() => getImage($location`The Ancient Hobo Burial Ground`), 10);
 
-export function wrapMain(action: () => void) {
+export function wrapMain(args = '', action: () => void) {
   try {
+    turbo = args.includes('turbo');
     if (myClass() === $class`Pastamancer` && myThrall() !== $thrall`Elbow Macaroni`) {
       useSkill(1, $skill`Bind Undead Elbow Macaroni`);
     }
@@ -253,6 +259,8 @@ export function wrapMain(action: () => void) {
     cliExecute('counters nowarn Fortune Cookie');
     cliExecute('mood apathetic');
     cliExecute('ccs minehobo2');
+    setProperty('hpAutoRecovery', turbo ? '0.5' : '0.8');
+    setProperty('hpAutoRecoveryTarget', '0.95');
     action();
     print('Done mining.');
   } finally {

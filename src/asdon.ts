@@ -1,7 +1,7 @@
-import { abort, getFuel, historicalPrice, isNpcItem, retrieveItem, toInt, visitUrl } from 'kolmafia';
+import { abort, getFuel, historicalPrice, isNpcItem, mallPrice, retrieveItem, toInt, visitUrl } from 'kolmafia';
 import { $items } from 'libram/src';
 
-const fuelBlacklist = $items`cup of "tea", thermos of "whiskey", Lucky Lindy, Bee's Knees, Sockdollager, Ish Kabibble, Hot Socks, Phonus Balonus, Flivver, Sloppy Jalopy, glass of "milk"`;
+const fuelBlacklist = $items`cup of "tea", thermos of "whiskey", Lucky Lindy, Bee's Knees, Sockdollager, Ish Kabibble, Hot Socks, Phonus Balonus, Flivver, Sloppy Jalopy, glass of "milk", drive-thru burger, Boulevardier cocktail`;
 
 function averageAdventures(it: Item) {
   if (it.adventures.includes('-')) {
@@ -12,9 +12,13 @@ function averageAdventures(it: Item) {
   }
 }
 
+function price(item: Item) {
+  return historicalPrice(item) === 0 ? mallPrice(item) : historicalPrice(item);
+}
+
 export function calculateFuelEfficiency(it: Item, targetUnits: number) {
   const units = averageAdventures(it);
-  return historicalPrice(it) / Math.min(targetUnits, units);
+  return price(it) / Math.min(targetUnits, units);
 }
 
 function isFuelItem(it: Item) {

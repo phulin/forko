@@ -23,7 +23,7 @@ export function main(args: string) {
 
   print(`Starting "mining"! Stopping in ${stopTurncount - myTurncount()} turns.`);
 
-  wrapMain(() => {
+  wrapMain(args, () => {
     if (!mustStop(stopTurncount)) doSewers(stopTurncount);
     if (!mustStop(stopTurncount)) doTownsquare(stopTurncount);
     if (!mustStop(stopTurncount)) doEe(stopTurncount, 1);

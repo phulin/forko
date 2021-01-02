@@ -35,7 +35,7 @@ import {
   xpath,
 } from 'kolmafia';
 import { $effect, $familiar, $item, $items, $monster, $skill, $skills } from 'libram/src';
-import { getPropertyBoolean, getPropertyInt, myFamiliarWeight, printLines, setPropertyInt } from './lib';
+import { getPropertyBoolean, getPropertyInt, myFamiliarWeight, printLines, setPropertyInt, turboMode } from './lib';
 
 // multiFight() stolen from Aenimus: https://github.com/Aenimus/aen_cocoabo_farm/blob/master/scripts/aen_combat.ash.
 // Thanks! Licensed under MIT license.
@@ -117,7 +117,7 @@ export class Macro {
   }
 
   static monster(foe: Monster) {
-    return `monsterid ${foe.id}`;
+    return `monstername "${foe}"`;
   }
 
   static and(left: string, right: string) {
@@ -186,8 +186,7 @@ export class Macro {
   }
 
   skillRepeat(sk: Skill) {
-    const name = sk.name.replace('%fn, ', '');
-    return this.mIf(`hasskill ${name}`, Macro.step(`skill ${name}`, 'repeat'));
+    return this.skill(sk).repeat();
   }
 
   static skillRepeat(sk: Skill) {
@@ -223,19 +222,8 @@ export class Macro {
     return new Macro().attack();
   }
 
-  stasis() {
-    return this.externalIf(myInebriety() > inebrietyLimit(), 'attack')
-      .externalIf(
-        myFamiliar() === $familiar`Stocking Mimic`,
-        Macro.mIf(
-          '!hpbelow 500',
-          Macro.skill($skill`Curse of Weaksauce`)
-            .skill($skill`Micrometeorite`)
-            .toString()
-        )
-      )
-      .skill($skill`Entangling Noodles`)
-      .mIf('!hpbelow 500', Macro.skill($skill`Extract`))
+  collect() {
+    return this.externalIf(!turboMode(), Macro.mIf('!hpbelow 500', Macro.skill($skill`Extract`)))
       .externalIf(
         myFamiliar() === $familiar`Space Jellyfish`,
         Macro.mIf(
@@ -253,8 +241,37 @@ export class Macro {
         ).toString()
       )
       .externalIf(
+        !turboMode(),
+        Macro.mWhile(
+          '!hpbelow 500 && monsterhpabove 250 && !match "some of it is even intact"',
+          Macro.skill($skill`Candyblast`)
+        )
+      );
+  }
+
+  static collect() {
+    return new Macro().collect();
+  }
+
+  stasis() {
+    return this.externalIf(myInebriety() > inebrietyLimit(), 'attack')
+      .externalIf(
         myFamiliar() === $familiar`Stocking Mimic`,
-        Macro.mWhile('!pastround 9 && !hpbelow 500', Macro.item($item`seal tooth`))
+        Macro.mIf(
+          '!hpbelow 500',
+          Macro.skill($skill`Curse of Weaksauce`)
+            .skill($skill`Micrometeorite`)
+            .toString()
+        )
+      )
+      .externalIf(!turboMode(), Macro.skill($skill`Entangling Noodles`))
+      .collect()
+      .externalIf(
+        myFamiliar() === $familiar`Stocking Mimic`,
+        Macro.mWhile(
+          '!pastround 9 && !hpbelow 500 && (!monstername "normal hobo" || monsterhpabove 200)',
+          Macro.item($item`seal tooth`)
+        )
       );
   }
 
@@ -291,8 +308,13 @@ export class Macro {
           getFuel() >= 100,
         Macro.mIf(Macro.nonFree(), Macro.skill($skill`Asdon Martin: Missile Launcher`))
       )
+      .externalIf(
+        !turboMode(),
+        Macro.mWhile('!hpbelow 500 && !match "some of it is even intact"', Macro.skill($skill`Candyblast`))
+      )
       .skill($skill`Lunging Thrust-Smack`)
       .skill($skill`Lunging Thrust-Smack`)
+      .mIf(Macro.monster($monster`spooky hobo`), Macro.skillRepeat($skill`Lunging Thrust-Smack`))
       .skill($skill`Stuffed Mortar Shell`)
       .skill($skill`Saucegeyser`)
       .attack();
@@ -418,12 +440,14 @@ export function main(initround: number, foe: Monster) {
           print('WARNING: Mafia is not tracking bander runaways correctly.');
           setPropertyInt('_banderRunaways', banderRunaways + 1);
         }
-      } else if (haveSkill(Skill.get('Reflex Hammer')) && getPropertyInt('_reflexHammerUsed') < 3) {
-        useSkill(1, Skill.get('Reflex Hammer'));
       } else if (haveSkill(Skill.get('Spring-Loaded Front Bumper'))) {
         useSkill(1, Skill.get('Spring-Loaded Front Bumper'));
+      } else if (haveSkill(Skill.get('Reflex Hammer')) && getPropertyInt('_reflexHammerUsed') < 3) {
+        useSkill(1, Skill.get('Reflex Hammer'));
       } else if (haveSkill(Skill.get('KGB tranquilizer dart')) && getPropertyInt('_kgbTranquilizerDartUses') < 3) {
         useSkill(1, Skill.get('KGB tranquilizer dart'));
+      } else if (haveSkill(Skill.get('Show them your ring')) && !getPropertyBoolean('_mafiaMiddleFingerRingUsed')) {
+        useSkill(1, Skill.get('Show them your ring'));
       } else if (myMp() >= 50 && haveSkill(Skill.get('Snokebomb')) && getPropertyInt('_snokebombUsed') < 3) {
         useSkill(1, Skill.get('Snokebomb'));
       } else if (freeRunItems.some((item: Item) => itemAmount(item) > 0)) {
@@ -499,7 +523,11 @@ export function adventureRunUnlessFree(loc: Location, preMacro: Macro, killMacro
 
 export function adventureRunOrStasis(loc: Location, freeRun: boolean) {
   if (freeRun) {
-    adventureRunUnlessFree(loc, Macro.skill($skill`Extract`).skill($skill`Extract Jelly`), Macro.stasis().kill());
+    adventureRunUnlessFree(
+      loc,
+      myFamiliar() === $familiar`Stocking Mimic` ? Macro.stasis() : Macro.collect(),
+      Macro.stasis().kill()
+    );
   } else {
     adventureMacro(loc, Macro.stasis().kill());
   }

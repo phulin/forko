@@ -86,5 +86,5 @@ export function doBb(stopTurncount: number) {
 }
 
 export function main(args: string) {
-  wrapMain(() => doBb(stopAt(args)));
+  wrapMain(args, () => doBb(stopAt(args)));
 }

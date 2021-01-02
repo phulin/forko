@@ -109,5 +109,5 @@ export function doAhbg(stopTurncount: number) {
 }
 
 export function main(args: string) {
-  wrapMain(() => doAhbg(stopAt(args)));
+  wrapMain(args, () => doAhbg(stopAt(args)));
 }
