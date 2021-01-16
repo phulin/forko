@@ -64,7 +64,7 @@ export function doHeap(stopTurncount: number) {
     manager.preAdventure();
     const macro = Macro.externalIf(
       myFamiliar() === $familiar`Space Jellyfish`,
-      Macro.mWhile(
+      Macro.while_(
         'hasskill CLEESH && hasskill Macrometeorite && hasskill Extract Jelly && !hpbelow 500 && !pastround 20 && monstername "stench hobo"',
         Macro.skill($skill`Extract Jelly`)
           .skill($skill`CLEESH`)

@@ -1,8 +1,8 @@
-import { $effect, $familiar, $familiars, $item, $items, $location, $locations, $skill } from 'libram/src';
+import { $effect, $familiar, $familiars, $item, $items, $location, $locations, $skill, get } from 'libram/src';
 import {
   adv1,
   availableAmount,
-  equip,
+  cliExecute,
   equippedAmount,
   getCampground,
   getCounters,
@@ -31,6 +31,7 @@ import {
   restoreHp,
   restoreMp,
   retrieveItem,
+  reverseNumberology,
   setLocation,
   setProperty,
   shopAmount,
@@ -364,14 +365,17 @@ export class AdventuringManager {
     if (pickedFamiliar === null) {
       const familiarValue: [Familiar, number][] = [[$familiar`Red-Nosed Snapper`, 0]];
 
+      const jellyProbability = [1, 0.5, 0.33, 0.25, 0.2, 0.05][clamp(getPropertyInt('_spaceJellyfishDrops'), 0, 5)];
       if (this.location === $location`The Purple Light District`) {
-        const probability = [1, 0.5, 0.33, 0.25, 0.2, 0.05][clamp(getPropertyInt('_spaceJellyfishDrops'), 0, 5)];
-        const jellyfishValue = mallPrice($item`sleaze jelly`) * probability;
+        const jellyfishValue = mallPrice($item`sleaze jelly`) * jellyProbability;
+        familiarValue.push([$familiar`Space Jellyfish`, jellyfishValue]);
+      } else if (this.location === $location`The Heap`) {
+        const jellyfishValue = mallPrice($item`stench jelly`) * jellyProbability;
         familiarValue.push([$familiar`Space Jellyfish`, jellyfishValue]);
       }
 
       if (!this.willFreeRun) {
-        if (!turbo) {
+        if (!turbo && myInebriety() <= inebrietyLimit()) {
           const mimicWeight = myFamiliarWeight($familiar`Stocking Mimic`);
           const actionPercentage = 1 / 3 + (haveEffect($effect`Jingle Jangle Jingle`) ? 0.1 : 0);
           const mimicValue = mimicDropValue() + ((mimicWeight * actionPercentage * 1) / 4) * 10 * 4 * 1.2;
@@ -399,7 +403,6 @@ export class AdventuringManager {
     }
     useFamiliar(pickedFamiliar);
     if (pickedFamiliar === $familiar`Stocking Mimic`) {
-      equip($item`bag of many confections`);
       maybeFeedMimic();
     }
     if (pickedFamiliar === $familiar`Red-Nosed Snapper` && getProperty('redSnapperPhylum') !== 'hobo') {
@@ -409,6 +412,14 @@ export class AdventuringManager {
     if (AdventuringManager.lastFamiliar !== pickedFamiliar) {
       print(`Picked familiar ${myFamiliar()}.`, 'blue');
       AdventuringManager.lastFamiliar = pickedFamiliar;
+    }
+  }
+
+  forceEquipWithFamiliar() {
+    if (myFamiliar() === $familiar`Stocking Mimic`) {
+      return [...this.forceEquip, $item`bag of many confections`];
+    } else {
+      return this.forceEquip;
     }
   }
 
@@ -431,7 +442,7 @@ export class AdventuringManager {
       }
     }
 
-    maximizeCached(renderObjective(this.primaryGoal, this.auxiliaryGoals, this.forceEquip, this.banned));
+    maximizeCached(renderObjective(this.primaryGoal, this.auxiliaryGoals, this.forceEquipWithFamiliar(), this.banned));
 
     sausageMp(100);
     if (myMp() < 100) restoreMp(100);
@@ -441,7 +452,7 @@ export class AdventuringManager {
 
     // Maximize again to make sure we have the right familiar equipment.
     // Will only trigger if familiar has changed.
-    maximizeCached(renderObjective(this.primaryGoal, this.auxiliaryGoals, this.forceEquip, this.banned));
+    maximizeCached(renderObjective(this.primaryGoal, this.auxiliaryGoals, this.forceEquipWithFamiliar(), this.banned));
 
     if (equippedAmount($item`lucky gold ring`) > 0) {
       for (const item of $items`hobo nickel, sand dollar`) {
@@ -462,6 +473,10 @@ export class AdventuringManager {
       adv1($location`The Purple Light District`, -1, '');
       putCloset(itemAmount($item`hobo nickel`), $item`hobo nickel`);
       AdventuringManager.lastSemirareCheck = myTurncount();
+    }
+
+    while (get('_universeCalculated') < get('skillLevel144') && reverseNumberology()[69] !== undefined) {
+      cliExecute('numberology 69');
     }
   }
 }

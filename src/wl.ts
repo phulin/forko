@@ -1,6 +1,7 @@
 import { getClanName, print, printHtml, setProperty, visitUrl, xpath } from 'kolmafia';
 import { getPropertyString } from './lib';
 import zip from 'lodash-es/zip';
+import { getSewersState } from './sewers';
 
 function getClanCache(targetClanName: string | null = null) {
   let clanCache = new Map<string, number>(JSON.parse(getPropertyString('minehobo_clanCache', '[]')));
@@ -53,6 +54,8 @@ export function printClanStatus() {
   const bossCount = (raidlogs.match(bossRe) || []).length;
   if (bossCount >= 4) {
     printHtml(`<b>Hobopolis cleared. ${bossCount} bosses defeated.</b>`);
+  } else if (!raidlogs.includes('made it through the sewer')) {
+    printHtml('<b>Fresh instance.</b>');
   } else {
     const whiteboardMatch = visitUrl('clan_basement.php?whiteboard=1').match(
       '<textarea[^>]*name=whiteboard[^>]*>([^<]*)</textarea>'
@@ -63,6 +66,8 @@ export function printClanStatus() {
       }
     }
   }
+  const sewers = getSewersState();
+  print(`Sewers at ${sewers.grates} grates, ${sewers.valves} valves`);
   print();
 }
 
@@ -72,6 +77,7 @@ export const farmingClans = [
   'worthawholebean Side Clan',
   'The Old Saloon',
   'Aftercorers',
+  'Abstract Singleton Train',
 ];
 export function main(target: string | null = null) {
   if (target !== null) setClan(target);

@@ -11,6 +11,8 @@ module.exports = {
     sewers: './src/sewers.ts',
     ee: './src/ee.ts',
     rescue: './src/rescue.ts',
+    finishsewers: './src/finishsewers.ts',
+    bkbuffs: './src/bkbuffs.ts',
   },
   mode: 'development',
   devtool: false,

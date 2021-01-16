@@ -88,12 +88,12 @@ export function getItem(qty: number, item: Item, maxPrice: number) {
   if (qty * mallPrice(item) > 1000000) abort('bad get!');
 
   let remaining = qty - itemAmount(item);
-  if (remaining <= 0) return;
+  if (remaining <= 0) return qty;
 
   const getCloset = Math.min(remaining, closetAmount(item));
   if (!takeCloset(getCloset, item)) abort('failed to remove from closet');
   remaining -= getCloset;
-  if (remaining <= 0) return;
+  if (remaining <= 0) return qty;
 
   let getMall = Math.min(remaining, shopAmount(item));
   if (!takeShop(getMall, item)) {
@@ -104,9 +104,11 @@ export function getItem(qty: number, item: Item, maxPrice: number) {
     if (!takeShop(getMall, item)) abort('failed to remove from shop');
   }
   remaining -= getMall;
-  if (remaining <= 0) return;
+  if (remaining <= 0) return qty;
 
-  if (buy(remaining, item, maxPrice) < remaining) abort(`Mall price too high for ${item.name}.`);
+  remaining -= buy(remaining, item, maxPrice);
+  if (remaining > 0) print(`Mall price too high for ${item}.`);
+  return qty - remaining;
 }
 
 export function sausageMp(target: number) {
@@ -169,9 +171,7 @@ function writeWhiteboard(text: string) {
 }
 
 export function recordInstanceState() {
-  const sewers = getSewersState();
   const lines = [
-    `Sewers at ${sewers.grates} grates, ${sewers.valves} valves`,
     `Ol' Scratch at image ${getImage($location`Burnbarrel Blvd.`)}`,
     `Frosty at image ${getImage($location`Exposure Esplanade`)}`,
     `Oscus at image ${getImage($location`The Heap`)}`,
@@ -259,6 +259,7 @@ export function wrapMain(args = '', action: () => void) {
     cliExecute('counters nowarn Fortune Cookie');
     cliExecute('mood apathetic');
     cliExecute('ccs minehobo2');
+    cliExecute('terminal educate digitize; terminal educate extract');
     setProperty('hpAutoRecovery', turbo ? '0.5' : '0.8');
     setProperty('hpAutoRecoveryTarget', '0.95');
     action();

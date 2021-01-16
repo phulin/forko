@@ -10,10 +10,10 @@ import {
   toFloat,
   visitUrl,
 } from 'kolmafia';
-import { $effect, $item, $location, $monster, $skill, $stat } from 'libram/src';
+import { $effect, $item, $location, $skill, $stat } from 'libram/src';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacro, Macro } from './combat';
-import { extractInt, getImage, getPropertyBoolean, memoizeTurncount, mustStop, setChoice, turboMode } from './lib';
+import { extractInt, getImage, memoizeTurncount, mustStop, setChoice, turboMode } from './lib';
 import { ensureEffect, expectedTurns, moodBaseline } from './mood';
 
 enum PartType {
@@ -99,18 +99,18 @@ function getParts(part: HoboPart, desiredParts: number, stopTurncount: number) {
         cliExecute(part.intrinsic.default);
       }
       Macro.stasis()
-        .mIf(Macro.monster($monster`sausage goblin`), Macro.skillRepeat($skill`Saucegeyser`))
+        .if_('monstername sausage goblin', Macro.skill($skill`Saucegeyser`).repeat())
         .skill($skill`Stuffed Mortar Shell`)
-        .externalIf(!turboMode(), Macro.skillRepeat($skill`Cannelloni Cannon`))
+        .externalIf(!turboMode(), Macro.skill($skill`Cannelloni Cannon`).repeat())
         .item($item`seal tooth`)
         .setAutoAttack();
     } else if (part.type === PartType.HOT) {
       Macro.stasis()
-        .skillRepeat($skill`Saucegeyser`)
+        .skill($skill`Saucegeyser`).repeat()
         .setAutoAttack();
     } else if (part.type === PartType.PHYSICAL) {
       Macro.stasis()
-        .skillRepeat($skill`Lunging Thrust-Smack`)
+        .skill($skill`Lunging Thrust-Smack`).repeat()
         .setAutoAttack();
     }
 

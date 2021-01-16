@@ -1,6 +1,7 @@
 {
   "extends": "./node_modules/gts/",
   "rules": {
+    "prettier/prettier": "off",
     "node/no-unpublished-import": "off",
     "prefer-template": "error",
     "sort-imports": [

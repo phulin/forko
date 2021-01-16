@@ -1,6 +1,6 @@
 import { getClanName, lastChoice, print, visitUrl } from 'kolmafia';
 import { $location } from 'libram/src';
-import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
+import { AdventuringManager, PrimaryGoal } from './adventure';
 import { adventureRunOrStasis } from './combat';
 import { extractInt, lastWasCombat, setChoice, wrapMain } from './lib';
 import { moodAddItem, moodMinusCombat } from './mood';
@@ -24,7 +24,7 @@ export function main(args: string) {
         $location`A Maze of Sewer Tunnels`,
         PrimaryGoal.MINUS_COMBAT,
         [],
-        usualDropItems
+        []
       );
       manager.setupFreeRuns();
       manager.preAdventure();

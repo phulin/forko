@@ -208,9 +208,9 @@ export function tryEnsurePotion(item: Item, turns = 1, maxPricePerTurn = 100, ac
   if (effectTurns < turns) {
     print(`${effect}: going for ${turns} turns, currently ${effectTurns}`);
     const uses = Math.ceil(Math.min((turns - effectTurns) / turnsPerUse, 1000 / turnsPerUse));
-    getItem(uses - (actualItem !== null ? availableAmount(actualItem) : 0), item, maxPricePerTurn * turnsPerUse);
-    if (actualItem !== null) retrieveItem(uses, actualItem);
-    use(uses, potion);
+    const quantityAcquired = getItem(uses - (actualItem !== null ? availableAmount(actualItem) : 0), item, maxPricePerTurn * turnsPerUse);
+    if (actualItem !== null) retrieveItem(quantityAcquired + availableAmount(actualItem), actualItem);
+    use(quantityAcquired, potion);
   }
   return haveEffect(effect) >= turns;
 }
