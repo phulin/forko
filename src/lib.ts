@@ -22,6 +22,7 @@ import {
   myTurncount,
   print,
   printHtml,
+  retrieveItem,
   setAutoAttack,
   setProperty,
   shopAmount,
@@ -85,7 +86,11 @@ export function cheapest(...items: Item[]) {
 }
 
 export function getItem(qty: number, item: Item, maxPrice: number) {
-  if (qty * mallPrice(item) > 1000000) abort('bad get!');
+  if (item !== $item`pocket wish` && qty * mallPrice(item) > 1000000) abort('bad get!');
+
+  try {
+    retrieveItem(qty, item);
+  } catch (e) { }
 
   let remaining = qty - itemAmount(item);
   if (remaining <= 0) return qty;

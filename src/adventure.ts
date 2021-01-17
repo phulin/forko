@@ -250,7 +250,7 @@ export class AdventuringManager {
       forceEquip = [...forceEquip, $item`Kramco Sausage-o-Matic™`];
     }
 
-    banned = [...banned, ...$items`Pigsticker of Violence, porcelain porkpie`];
+    banned = [...banned, ...$items`Pigsticker of Violence, porcelain porkpie, miniature crystal ball`];
 
     this.location = location;
     this.primaryGoal = primaryGoal;

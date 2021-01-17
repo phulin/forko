@@ -13,6 +13,7 @@ module.exports = {
     rescue: './src/rescue.ts',
     finishsewers: './src/finishsewers.ts',
     bkbuffs: './src/bkbuffs.ts',
+    bkfights: './src/bkfights.ts',
   },
   mode: 'development',
   devtool: false,

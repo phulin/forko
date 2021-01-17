@@ -24,7 +24,7 @@ import {
   useSkill,
   visitUrl,
 } from 'kolmafia';
-import { $effect, $familiar, $item, $items, $monster, $skill, Macro as LibramMacro } from 'libram/src';
+import { $effect, $familiar, $item, $items, $monster, $skill, Macro as LibramMacro } from 'libram';
 import { getPropertyBoolean, getPropertyInt, myFamiliarWeight, setPropertyInt, turboMode } from './lib';
 
 // multiFight() stolen from Aenimus: https://github.com/Aenimus/aen_cocoabo_farm/blob/master/scripts/aen_combat.ash.
@@ -166,14 +166,31 @@ export class Macro extends LibramMacro {
       .tryItem('Louder Than Bomb', 'tattered scrap of paper', 'GOTO', 'green smoke bomb')
       .abort();
   }
+
+  spellKill() {
+    return this.skill('Curse of Weaksauce', 'Micrometeorite', 'Stuffed Mortar Shell', 'Saucegeyser').repeat();
+  }
+
+  static spellKill() {
+    return new Macro().spellKill();
+  }
+
+  tentacle() {
+    return this.if_('monstername eldritch tentacle', Macro.skill('Curse of Weaksauce', 'Micrometeorite', 'Stuffed Mortar Shell', 'Saucestorm').repeat());
+  }
+
+  static tentacle() {
+    return new Macro().tentacle();
+  }
 }
 
 export const MODE_NULL = '';
 export const MODE_MACRO = 'macro';
 export const MODE_FIND_MONSTER_THEN = 'findthen';
 export const MODE_RUN_UNLESS_FREE = 'rununlessfree';
+type CombatMode = '' | 'macro' | 'findthen' | 'rununlessfree';
 
-export function setMode(mode: string, arg1: string | null = null, arg2: string | null = null) {
+export function setMode(mode: CombatMode, arg1: string | null = null, arg2: string | null = null) {
   setProperty('minehobo_combatMode', mode);
   if (arg1 !== null) setProperty('minehobo_combatArg1', arg1);
   if (arg2 !== null) setProperty('minehobo_combatArg2', arg2);
@@ -236,14 +253,30 @@ export function main(initialRound: number, foe: Monster) {
   }
 }
 
-export function adventureMode(loc: Location, mode: string, arg1: string | null = null, arg2: string | null = null) {
+export function withMode<T>(action: () => T, mode: CombatMode, arg1: string | null = null, arg2: string | null = null) {
   setMode(mode, arg1, arg2);
   try {
-    adv1(loc, -1, '');
-    multiFight();
+    return action();
   } finally {
-    setMode(MODE_NULL, '', '');
+    multiFight();
+    setMode(MODE_NULL);
   }
+}
+
+export function withMacro<T>(macro: Macro, action: () => T) {
+  try {
+    macro.save();
+    return action();
+  } finally {
+    multiFight();
+    Macro.clearSaved();
+  }
+}
+
+export function adventureMode(loc: Location, mode: CombatMode, arg1: string | null = null, arg2: string | null = null) {
+  return withMode(() => {
+    adv1(loc, -1, '');
+  }, mode, arg1, arg2);
 }
 
 export function adventureRunUnlessFree(loc: Location, preMacro: Macro, killMacro: Macro) {
@@ -263,12 +296,7 @@ export function adventureRunOrStasis(loc: Location, freeRun: boolean) {
 }
 
 export function adventureMacro(loc: Location, macro: Macro) {
-  macro.save();
-  try {
-    adventureMode(loc, MODE_MACRO);
-  } finally {
-    Macro.clearSaved();
-  }
+  withMode(() => withMacro(macro, () => adv1(loc, -1, '')), MODE_MACRO);
 }
 
 export function adventureMacroAuto(loc: Location, autoMacro: Macro, nextMacro: Macro | null = null) {
