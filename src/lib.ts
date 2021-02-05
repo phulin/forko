@@ -36,7 +36,7 @@ import {
   wait,
   weightAdjustment,
 } from 'kolmafia';
-import { $class, $effect, $item, $items, $location, $skill, $thrall } from 'libram/src';
+import { $class, $effect, $item, $items, $location, $skill, $thrall, get } from 'libram/src';
 import { getSewersState, throughSewers } from './sewers';
 
 export function clamp(n: number, min: number, max: number) {
@@ -90,6 +90,7 @@ export function getItem(qty: number, item: Item, maxPrice: number) {
 
   try {
     retrieveItem(qty, item);
+    // eslint-disable-next-line no-empty
   } catch (e) { }
 
   let remaining = qty - itemAmount(item);
@@ -264,7 +265,10 @@ export function wrapMain(args = '', action: () => void) {
     cliExecute('counters nowarn Fortune Cookie');
     cliExecute('mood apathetic');
     cliExecute('ccs minehobo2');
-    cliExecute('terminal educate digitize; terminal educate extract');
+    if (get('sourceTerminalEducate1') !== 'digitize.edu' || get('sourceTerminalEducate2') !== 'extract.edu') {
+      cliExecute('terminal educate digitize; terminal educate extract');
+    }
+    if (get('boomBoxSong') !== 'Food Vibrations') cliExecute('boombox food');
     setProperty('hpAutoRecovery', turbo ? '0.5' : '0.8');
     setProperty('hpAutoRecoveryTarget', '0.95');
     action();

@@ -128,9 +128,9 @@ export function doEe(stopTurncount: number, pass: number) {
       const needMinusCombat = !yodeled || state.icicles < ICICLE_COUNT || state.flimflams + state.diverts < 21;
       const estimatedTurns = 2 * (ICICLE_COUNT - state.icicles) + state.image * 10;
       if (needMinusCombat) {
-        moodBaseline(clamp(estimatedTurns, 0, 300));
-      } else {
         moodMinusCombat(expectedTurns(stopTurncount), clamp(estimatedTurns, 0, 300));
+      } else {
+        moodBaseline(clamp(estimatedTurns, 0, 300));
       }
       const manager = new AdventuringManager(
         $location`Exposure Esplanade`,

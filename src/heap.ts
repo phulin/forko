@@ -77,7 +77,7 @@ export function doHeap(stopTurncount: number) {
 
     if (lastWasCombat() && lastMonster() === $monster`stench hobo`) {
       state.defeated += 1;
-    } else {
+    } else if (!lastWasCombat()) {
       if (lastChoice() === 216) {
         if (getPropertyInt('minehobo_heapNcsUntilCompost', 0) <= 0) {
           // We just composted.

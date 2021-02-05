@@ -47,6 +47,8 @@ export class Macro extends LibramMacro {
   }
 
   collect() {
+    const maxMimicDamage = myFamiliar() === $familiar`Stocking Mimic` ? 2 * (myFamiliarWeight() + 3) : 0;
+    const maxDamage = 2 * candyblastDamage() + maxMimicDamage;
     return this.externalIf(!turboMode(), Macro.if_('!hpbelow 500', Macro.skill($skill`Extract`)))
       .externalIf(
         myFamiliar() === $familiar`Space Jellyfish`,
@@ -67,7 +69,7 @@ export class Macro extends LibramMacro {
       .externalIf(
         !turboMode(),
         Macro.while_(
-          `!hpbelow 500 && monsterhpabove ${2 * candyblastDamage()} && !match "some of it is even intact"`,
+          `!hpbelow 500 && monsterhpabove ${maxDamage} && !match "some of it is even intact"`,
           Macro.skill($skill`Candyblast`)
         )
       );
@@ -266,9 +268,8 @@ export function withMode<T>(action: () => T, mode: CombatMode, arg1: string | nu
 export function withMacro<T>(macro: Macro, action: () => T) {
   try {
     macro.save();
-    return action();
+    return withMode(action, MODE_MACRO);
   } finally {
-    multiFight();
     Macro.clearSaved();
   }
 }

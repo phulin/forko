@@ -9,13 +9,16 @@ import {
   haveEffect,
   haveSkill,
   hpCost,
+  inebrietyLimit,
   itemAmount,
   mallPrice,
   maximize,
   mpCost,
   myAdventures,
+  myBasestat,
   myEffects,
   myHp,
+  myInebriety,
   myLevel,
   myMaxhp,
   myMaxmp,
@@ -33,7 +36,7 @@ import {
   use,
   useSkill,
 } from 'kolmafia';
-import { $effect, $effects, $item, $items, $skill } from 'libram/src';
+import { $effect, $effects, $item, $items, $skill, $stat, get } from 'libram';
 
 import { fillAsdonMartinTo } from './asdon';
 import { cheapest, clamp, getItem, getPropertyBoolean, getPropertyInt, getPropertyString } from './lib';
@@ -141,7 +144,7 @@ export function trySausageMp() {
 
 function tryUsePyec() {
   const pyec = $item`Platinum Yendorian Express Card`;
-  const stashClan = getPropertyString('stashClan');
+  const stashClan = get<string>('stashClan') || null;
   if (
     (availableAmount($item`Platinum Yendorian Express Card`) > 0 || stashClan !== null) &&
     !getPropertyBoolean('expressCardUsed')
@@ -204,9 +207,12 @@ export function tryEnsurePotion(item: Item, turns = 1, maxPricePerTurn = 100, ac
   const effect = effectModifier(potion, 'Effect');
   const effectTurns = haveEffect(effect);
   const turnsPerUse = numericModifier(potion, 'Effect Duration');
-  if (mallPrice(item) > maxPricePerTurn * turnsPerUse) return false;
+  if (mallPrice(item) > maxPricePerTurn * turnsPerUse) {
+    // print(`${effect}: price ${mallPrice(item)} greater than max ${maxPricePerTurn * turnsPerUse}`);
+    return false;
+  }
   if (effectTurns < turns) {
-    print(`${effect}: going for ${turns} turns, currently ${effectTurns}`);
+    // print(`${effect}: going for ${turns} turns, currently ${effectTurns}`);
     const uses = Math.ceil(Math.min((turns - effectTurns) / turnsPerUse, 1000 / turnsPerUse));
     const quantityAcquired = getItem(uses - (actualItem !== null ? availableAmount(actualItem) : 0), item, maxPricePerTurn * turnsPerUse);
     if (actualItem !== null) retrieveItem(quantityAcquired + availableAmount(actualItem), actualItem);
@@ -256,10 +262,13 @@ export function moodBaseline(maxTurns: number) {
   // Combat.
   tryEnsureSkill($skill`Carol of the Hells`, maxTurns);
   tryEnsureSkill($skill`Carol of the Bulls`, maxTurns);
-  tryEnsureSkill($skill`Song of Starch`, maxTurns);
   tryEnsureSkill($skill`Quiet Determination`, maxTurns);
   tryEnsureSkill($skill`Springy Fusilli`, maxTurns);
   tryEnsurePotion($item`pec oil`, maxTurns);
+  if (myInebriety() <= inebrietyLimit() && myBasestat($stat`Muscle`) < 300) {
+    // Only use if we're going to stasis.
+    tryEnsureSkill($skill`Song of Starch`, maxTurns);
+  }
 
   // Elemental res.
   tryEnsureSkill($skill`Elemental Saucesphere`, maxTurns);

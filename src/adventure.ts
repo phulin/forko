@@ -342,7 +342,11 @@ export class AdventuringManager {
     const lowMp = myMp() < Math.min(myMaxmp() - 50, myFamiliar() === $familiar`Stocking Mimic` ? 400 : 200);
     const turbo = turboMode();
 
-    if (this.willFreeRun) {
+    if (myInebriety() === (myFamiliar() === $familiar`Stooper` ? 0 : 1) + inebrietyLimit()) {
+      pickedFamiliar = $familiar`Stooper`;
+    }
+
+    if (pickedFamiliar === null && this.willFreeRun) {
       if (this.primaryGoal === PrimaryGoal.MINUS_COMBAT && myFamiliarWeight($familiar`Disgeist`) >= 38) {
         pickedFamiliar = $familiar`Disgeist`;
       } else if (myInebriety() <= inebrietyLimit() && lowMp && !turbo) {

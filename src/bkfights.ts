@@ -77,7 +77,7 @@ export function withStash<T>(itemsToTake: Item[], action: () => T) {
 }
 
 if (!have($effect`Steely-Eyed Squint`)) throw 'Get Squint first!';
-if (!have($effect`Eldritch Attunement`)) throw 'Get Eldritch Attunement first!';
+// if (!have($effect`Eldritch Attunement`)) throw 'Get Eldritch Attunement first!';
 
 cliExecute('mood apathetic');
 cliExecute('ccs minehobo2');
@@ -93,6 +93,18 @@ equip($slot`pants`, $item`pantogram pants`);
 equip($slot`acc1`, $item`lucky gold ring`);
 equip($slot`acc2`, $item`Mr. Cheeng's spectacles`);
 // equip($slot`acc3`, $item`Belt of Loathing`);
+
+// 25	3	0	0	L.O.V. Enemies	must have the Tunnel of L.O.V.E. or use a LOV Entrance Pass
+if (!TunnelOfLove.isUsed()) {
+  const effect = have($effect`Wandering Eye Surgery`) ? 'Open Heart Surgery' : 'Wandering Eye Surgery';
+  withMacro(Macro.tentacle().spellKill(), () =>
+    TunnelOfLove.fightAll('LOV Epaulettes', effect, 'LOV Extraterrestrial Chocolate')
+  );
+
+  if (handlingChoice()) throw 'Did not get all the way through LOV.';
+  visitUrl('choice.php');
+  if (handlingChoice()) throw 'Did not get all the way through LOV.';
+}
 
 // 0	1	0	0	Chateau painting
 if (
@@ -154,7 +166,7 @@ if (
   while (get('_sealsSummoned') < 10) {
     retrieveItem(1, $item`figurine of a wretched-looking seal`);
     retrieveItem(1, $item`seal-blubber candle`);
-    withMacro(Macro.tentacle().spellKill(), () => {
+    withMacro(Macro.tentacle().attack().repeat(), () => {
       if (!use(1, $item`figurine of a wretched-looking seal`)) {
         set('_sealsSummoned', 10);
       }
@@ -290,7 +302,7 @@ while (get('_neverendingPartyFreeTurns') < 10) {
 // 24	1	0	0	piranha plant	Must have Your Mushroom Garden as your garden. 5/day only in Path of the Plumber.
 // 24	3	0	0	Portscan/Macro
 // FIXME: Portscan three times instead of twice
-if (getCampground()['packet of mushroom spores'] !== undefined && get('_mushroomGardenFights') === 0) {
+if (getCampground()['packet of mushroom spores'] !== undefined && (get('_mushroomGardenFights') === 0 || getCounters('portscan.edu', 0, 0) === 'portscan.edu')) {
   cliExecute('terminal educate portscan');
   while (get('_mushroomGardenFights') === 0 || getCounters('portscan.edu', 0, 0) === 'portscan.edu') {
     adventureMacro(
@@ -302,18 +314,6 @@ if (getCampground()['packet of mushroom spores'] !== undefined && get('_mushroom
         .spellKill()
     );
   }
-}
-
-// 25	3	0	0	L.O.V. Enemies	must have the Tunnel of L.O.V.E. or use a LOV Entrance Pass
-if (!TunnelOfLove.isUsed()) {
-  const effect = have($effect`Wandering Eye Surgery`) ? 'Open Heart Surgery' : 'Wandering Eye Surgery';
-  withMacro(Macro.tentacle().spellKill(), () =>
-    TunnelOfLove.fightAll('LOV Epaulettes', effect, 'LOV Extraterrestrial Chocolate')
-  );
-
-  if (handlingChoice()) throw 'Did not get all the way through LOV.';
-  visitUrl('choice.php');
-  if (handlingChoice()) throw 'Did not get all the way through LOV.';
 }
 
 // 28	5	0	0	Witchess pieces	must have a Witchess Set; can copy for more

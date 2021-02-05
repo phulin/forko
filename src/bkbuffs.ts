@@ -425,16 +425,16 @@ export function main(argsString = '') {
     const table = new Table();
 
     runningItemDrop += 10;
-    table.row(0, exactPlusItem(2 * runningItemDrop, runningFamiliarWeight), 10, 0, 'The Packrat');
+    table.row(0, exactPlusItem(2 * runningItemDrop, runningFamiliarWeight).toFixed(), 10, 0, 'The Packrat');
 
     runningItemDrop += 10;
-    table.row(0, exactPlusItem(2 * runningItemDrop, runningFamiliarWeight), 10, 0, 'Spice Ghost');
+    table.row(0, exactPlusItem(2 * runningItemDrop, runningFamiliarWeight).toFixed(), 10, 0, 'Spice Ghost');
 
     runningItemDrop += outfitItemDrop;
     runningFamiliarWeight += outfitFamiliarWeight;
     table.row(
       0,
-      exactPlusItem(2 * runningItemDrop, runningFamiliarWeight),
+      exactPlusItem(2 * runningItemDrop, runningFamiliarWeight).toFixed(),
       outfitItemDrop,
       outfitFamiliarWeight,
       'Outfit'
