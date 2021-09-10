@@ -38,7 +38,7 @@ import {
   set,
   TunnelOfLove,
   Witchess,
-} from 'libram/src';
+} from 'libram';
 import { fillAsdonMartinTo } from './asdon';
 import { adventureMacro, Macro, withMacro } from './combat';
 import { getItem, setChoice } from './lib';

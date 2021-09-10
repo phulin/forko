@@ -1,5 +1,5 @@
 import { lastChoice, lastMonster, myFamiliar, myTurncount, print, visitUrl } from 'kolmafia';
-import { $familiar, $location, $monster, $skill } from 'libram/src';
+import { $familiar, $location, $monster, $skill } from 'libram';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacroAuto, Macro } from './combat';
 import {

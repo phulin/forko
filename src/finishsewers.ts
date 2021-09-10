@@ -1,5 +1,5 @@
 import { getClanName, print } from 'kolmafia';
-import { $location } from 'libram/src';
+import { $location } from 'libram';
 import { AdventuringManager, PrimaryGoal } from './adventure';
 import { adventureRunOrStasis } from './combat';
 import { setChoice, wrapMain } from './lib';

@@ -3,15 +3,14 @@ import {
   inebrietyLimit,
   myAdventures,
   myInebriety,
-  myTurncount,
   print,
   setAutoAttack,
   visitUrl,
 } from 'kolmafia';
-import { $item, $location } from 'libram/src';
+import { $item, $location } from 'libram';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureRunOrStasis } from './combat';
-import { extractInt, getChoice, memoizeTurncount, mustStop, setChoice } from './lib';
+import { extractInt, getChoice, memoizeTurncount, mustStop, setChoice, stopAt, wrapMain } from './lib';
 import { expectedTurns, moodAddItem, moodMinusCombat } from './mood';
 
 export const getSewersState = memoizeTurncount(() => {
@@ -78,6 +77,6 @@ export function doSewers(stopTurncount: number) {
   else print('Stopping prematurely... not through sewers.');
 }
 
-export function main() {
-  doSewers(myTurncount() + 10000);
+export function main(args = '') {
+  wrapMain(args, () => doSewers(stopAt(args)));
 }

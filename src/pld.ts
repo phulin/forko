@@ -1,5 +1,5 @@
 import { lastChoice, print, setAutoAttack, visitUrl } from 'kolmafia';
-import { $location } from 'libram/src';
+import { $location } from 'libram';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacroAuto, adventureRunOrStasis, Macro } from './combat';
 import { getState as getEeState } from './ee';

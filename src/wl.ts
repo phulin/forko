@@ -2,6 +2,7 @@ import { getClanName, print, printHtml, setProperty, visitUrl, xpath } from 'kol
 import { getPropertyString } from './lib';
 import zip from 'lodash-es/zip';
 import { getSewersState } from './sewers';
+import { Clan } from 'libram';
 
 function getClanCache(targetClanName: string | null = null) {
   let clanCache = new Map<string, number>(JSON.parse(getPropertyString('minehobo_clanCache', '[]')));
@@ -80,6 +81,6 @@ export const farmingClans = [
   'Abstract Singleton Train',
 ];
 export function main(target: string | null = null) {
-  if (target !== null) setClan(target);
+  if (target !== null) Clan.join(target);
   if (farmingClans.includes(getClanName())) printClanStatus();
 }

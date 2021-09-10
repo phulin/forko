@@ -29,7 +29,6 @@
     "core-js": "^3.8.0",
     "gts": "^3.0.2",
     "kolmafia": "^1.0.3",
-    "libram": "github:Loathing-Associates-Scripting-Society/libram#combat",
     "lodash-es": "^4.17.15",
     "patch-package": "^6.2.2",
     "typescript": "^4.0.3",

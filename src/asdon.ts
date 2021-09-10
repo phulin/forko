@@ -1,7 +1,7 @@
 import { abort, getFuel, historicalPrice, isNpcItem, mallPrice, retrieveItem, toInt, visitUrl } from 'kolmafia';
-import { $items } from 'libram/src';
+import { $items } from 'libram';
 
-const fuelBlacklist = $items`cup of "tea", thermos of "whiskey", Lucky Lindy, Bee's Knees, Sockdollager, Ish Kabibble, Hot Socks, Phonus Balonus, Flivver, Sloppy Jalopy, glass of "milk", drive-thru burger, Boulevardier cocktail`;
+const fuelBlacklist = $items`cup of "tea", thermos of "whiskey", Lucky Lindy, Bee's Knees, Sockdollager, Ish Kabibble, Hot Socks, Phonus Balonus, Flivver, Sloppy Jalopy, glass of "milk"`;
 
 function averageAdventures(it: Item) {
   if (it.adventures.includes('-')) {

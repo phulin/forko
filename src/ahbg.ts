@@ -1,5 +1,5 @@
 import { lastChoice, print, visitUrl } from 'kolmafia';
-import { $location } from 'libram/src';
+import { $location } from 'libram';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacroAuto, Macro } from './combat';
 import {

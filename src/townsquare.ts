@@ -3,14 +3,16 @@ import {
   ceil,
   cliExecute,
   haveEffect,
+  inebrietyLimit,
   myBuffedstat,
+  myInebriety,
   numericModifier,
   print,
   round,
   toFloat,
   visitUrl,
 } from 'kolmafia';
-import { $effect, $item, $location, $skill, $stat } from 'libram/src';
+import { $effect, $item, $location, $skill, $stat } from 'libram';
 import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
 import { adventureMacro, Macro } from './combat';
 import { extractInt, getImage, memoizeTurncount, mustStop, setChoice, turboMode } from './lib';
@@ -136,7 +138,7 @@ export function doTownsquare(stopTurncount: number) {
   visitUrl('clan_hobopolis.php?preaction=simulacrum&place=3&qty=1&makeall=1');
 
   const image = getImage($location`Hobopolis Town Square`);
-  if (image < 11) {
+  if (image < 11 && myInebriety() <= inebrietyLimit()) {
     // Assume we're at the end of our current image and estimate. This will be conservative.
     const imagesRemaining = 11 - image;
     let hobosRemaining = (imagesRemaining - 1) * 100;
@@ -183,11 +185,16 @@ export function doTownsquare(stopTurncount: number) {
   print('Close to goal; using 1-by-1 strategy.');
 
   while (!pldAccessible() && !mustStop(stopTurncount)) {
-    for (const part of allParts.values()) {
-      getParts(part, 1, stopTurncount);
+    if (myInebriety() <= inebrietyLimit()) {
+      for (const part of allParts.values()) {
+        getParts(part, 1, stopTurncount);
+      }
+      print('Making available scarehobos.');
+      visitUrl('clan_hobopolis.php?preaction=simulacrum&place=3&qty=1&makeall=1');
+    } else {
+      const physical = allParts.get(PartType.PHYSICAL)!;
+      getParts(physical, currentParts().get(physical)! + 1, stopTurncount);
     }
-    print('Making available scarehobos.');
-    visitUrl('clan_hobopolis.php?preaction=simulacrum&place=3&qty=1&makeall=1');
     currentParts.forceUpdate();
   }
   if (pldAccessible()) {

@@ -1,4 +1,4 @@
-import { $effect, $familiar, $familiars, $item, $items, $location, $locations, $skill, get } from 'libram/src';
+import { $effect, $familiar, $familiars, $item, $items, $location, $locations, $skill, get } from 'libram';
 import {
   adv1,
   availableAmount,
@@ -81,16 +81,6 @@ export function maximizeCached(objective: string) {
   const familiarChanged = oldFamiliar !== myFamiliar().toString();
 
   if (!objectiveChanged && !statsChanged && !familiarChanged) return;
-
-  if (
-    objective.includes('familiar weight') &&
-    availableAmount($item`burning paper crane`) === 0 &&
-    availableAmount($item`cursed pirate cutlass`) === 0 &&
-    mallPrice($item`burning newspaper`) < 6000 &&
-    myAdventures() > 300
-  ) {
-    retrieveItem(1, $item`burning paper crane`);
-  }
 
   if (maximize(objective, false)) {
     setProperty('minehobo_lastObjective', objective);
@@ -350,7 +340,7 @@ export class AdventuringManager {
       if (this.primaryGoal === PrimaryGoal.MINUS_COMBAT && myFamiliarWeight($familiar`Disgeist`) >= 38) {
         pickedFamiliar = $familiar`Disgeist`;
       } else if (myInebriety() <= inebrietyLimit() && lowMp && !turbo) {
-        pickedFamiliar = $familiar`Stocking Mimic`;
+        pickedFamiliar = $familiar`Machine Elf`;
       } else if (
         !$locations`A Maze of Sewer Tunnels, Hobopolis Town Square`.includes(this.location) &&
         haveFamiliar($familiar`Space Jellyfish`)

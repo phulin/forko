@@ -36,7 +36,7 @@ import {
   wait,
   weightAdjustment,
 } from 'kolmafia';
-import { $class, $effect, $item, $items, $location, $skill, $thrall, get } from 'libram/src';
+import { $class, $effect, $item, $items, $location, $skill, $thrall, get } from 'libram';
 import { getSewersState, throughSewers } from './sewers';
 
 export function clamp(n: number, min: number, max: number) {

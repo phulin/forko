@@ -69,7 +69,7 @@ export class Macro extends LibramMacro {
       .externalIf(
         !turboMode(),
         Macro.while_(
-          `!hpbelow 500 && monsterhpabove ${maxDamage} && !match "some of it is even intact"`,
+          `!monstername normal hobo && !hpbelow 500 && monsterhpabove ${maxDamage} && !match "some of it is even intact"`,
           Macro.skill($skill`Candyblast`)
         )
       );
@@ -94,7 +94,7 @@ export class Macro extends LibramMacro {
       .externalIf(
         myFamiliar() === $familiar`Stocking Mimic`,
         Macro.while_(
-          '!pastround 9 && !hpbelow 500 && (!monstername "normal hobo" || monsterhpabove 200)',
+          `!pastround 9 && !hpbelow 500 && (!monstername "normal hobo" || monsterhpabove ${2 * myFamiliarWeight()})`,
           Macro.item($item`seal tooth`)
         )
       );
@@ -142,7 +142,8 @@ export class Macro extends LibramMacro {
       .if_('monstername spooky hobo', Macro.skill($skill`Lunging Thrust-Smack`).repeat())
       .skill($skill`Stuffed Mortar Shell`)
       .skill($skill`Saucegeyser`)
-      .attack();
+      .attack()
+      .repeat();
   }
 
   static kill() {
@@ -221,7 +222,7 @@ export function main(initialRound: number, foe: Monster) {
     if (foe.attributes.includes('FREE')) {
       killMacro.submit();
     } else {
-      preMacro.submit();
+      if (preMacro.toString().length > 0) preMacro.submit();
       if (
         myFamiliar() === Familiar.get('Frumious Bandersnatch') &&
         haveEffect(Effect.get('Ode to Booze')) > 0 &&
