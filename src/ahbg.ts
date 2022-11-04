@@ -1,7 +1,7 @@
-import { lastChoice, print, visitUrl } from 'kolmafia';
-import { $location } from 'libram';
-import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
-import { adventureMacroAuto, Macro } from './combat';
+import { lastChoice, print, visitUrl } from "kolmafia";
+import { $location } from "libram";
+import { AdventuringManager, PrimaryGoal, usualDropItems } from "./adventure";
+import { adventureMacroAuto, Macro } from "./combat";
 import {
   extractInt,
   getImageAhbg,
@@ -13,8 +13,8 @@ import {
   setPropertyInt,
   stopAt,
   wrapMain,
-} from './lib';
-import { expectedTurns, moodBaseline, moodMinusCombat } from './mood';
+} from "./lib";
+import { expectedTurns, moodBaseline, moodMinusCombat } from "./mood";
 
 class AHBGState {
   image = 0;
@@ -28,7 +28,7 @@ function getAhbgState() {
   const result = new AHBGState();
   result.image = getImageAhbg();
 
-  const logText = visitUrl('clan_raidlogs.php');
+  const logText = visitUrl("clan_raidlogs.php");
   result.watched = extractInt(/watched some zombie hobos dance \(([0-9]+) turn/g, logText);
   result.dances = extractInt(/busted (a|[0-9]+) move/g, logText);
   result.kills = extractInt(/defeated +Spooky hobo x ([0-9]+)/g, logText);
@@ -57,11 +57,11 @@ export function doAhbg(stopTurncount: number) {
         moodMinusCombat(expectedTurns(stopTurncount), 25);
       }
       setChoice(222, 1);
-      setChoice(208, getPropertyInt('minehobo_ahbgNcsUntilFlowers', 0) <= 0 ? 1 : 2);
+      setChoice(208, getPropertyInt("minehobo_ahbgNcsUntilFlowers", 0) <= 0 ? 1 : 2);
     } else {
       moodBaseline(expectedTurns(stopTurncount));
       primaryGoal = PrimaryGoal.NONE;
-      auxiliaryGoals = ['familiar weight'];
+      auxiliaryGoals = ["familiar weight"];
       setChoice(222, 2);
       setChoice(208, 2);
     }
@@ -77,14 +77,17 @@ export function doAhbg(stopTurncount: number) {
 
     if (!lastWasCombat()) {
       if (lastChoice() === 208) {
-        if (getPropertyInt('minehobo_ahbgNcsUntilFlowers', 0) <= 0) {
-          setPropertyInt('minehobo_ahbgNcsUntilFlowers', 5);
+        if (getPropertyInt("minehobo_ahbgNcsUntilFlowers", 0) <= 0) {
+          setPropertyInt("minehobo_ahbgNcsUntilFlowers", 5);
         }
       } else if (lastChoice() === 204) {
         // Zombo!
         break;
       } else if (lastChoice() !== 220) {
-        setPropertyInt('minehobo_ahbgNcsUntilFlowers', getPropertyInt('minehobo_ahbgNcsUntilFlowers', 0) - 1);
+        setPropertyInt(
+          "minehobo_ahbgNcsUntilFlowers",
+          getPropertyInt("minehobo_ahbgNcsUntilFlowers", 0) - 1
+        );
       } else if (lastChoice() === 221) {
         state.watched += 1;
       } else if (lastChoice() === 222) {
@@ -98,13 +101,13 @@ export function doAhbg(stopTurncount: number) {
       `Flimflams: ${state.flimflams}`,
       `Chillier Night: ${state.watched + state.dances}`,
       `My dances: ${state.dances}`,
-      `Until flowers: ${getPropertyInt('minehobo_ahbgNcsUntilFlowers')}`
+      `Until flowers: ${getPropertyInt("minehobo_ahbgNcsUntilFlowers")}`
     );
   }
 
   if (getImageAhbg.forceUpdate() === 10) {
-    setPropertyInt('minehobo_ahbgNcsUntilFlowers', 0);
-    print('At Zombo. AHBG complete!');
+    setPropertyInt("minehobo_ahbgNcsUntilFlowers", 0);
+    print("At Zombo. AHBG complete!");
   }
 }
 

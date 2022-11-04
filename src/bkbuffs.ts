@@ -23,14 +23,14 @@ import {
   use,
   userConfirm,
   useSkill,
-} from 'kolmafia';
-import { $class, $effect, $effects, $item, $items, $skill, $skills, get, have } from 'libram';
-import { clamp, getItem } from './lib';
-import { drive } from './mood';
+} from "kolmafia";
+import { $class, $effect, $effects, $item, $items, $skill, $skills, get, have } from "libram";
+import { clamp, getItem } from "./lib";
+import { drive } from "./mood";
 
 function equipmentItem(itemOrString: Item | string) {
-  const item = typeof itemOrString === 'string' ? Item.get(itemOrString) : itemOrString;
-  return numericModifier(item, 'item drop');
+  const item = typeof itemOrString === "string" ? Item.get(itemOrString) : itemOrString;
+  return numericModifier(item, "item drop");
 }
 
 class Override {
@@ -81,7 +81,11 @@ const impossiblePassives = new Set<Skill>([
   $skill`Envy`, // Bad Moon skill
 ]);
 
-const skipItems = new Set<Item>([$item`The Legendary Beat`, $item`seal eyeball`, $item`evil eyedrops of the ermine`]);
+const skipItems = new Set<Item>([
+  $item`The Legendary Beat`,
+  $item`seal eyeball`,
+  $item`evil eyedrops of the ermine`,
+]);
 
 const skipSkills = new Set<Skill>([$skill`Rain Dance`, $skill`Magnetic Ears`]);
 
@@ -89,13 +93,13 @@ const familiarMultiplier = 1.25; // Jumpsuited Hound Dog;
 
 const outfitItemDrop =
   50 + // eldritch hat/pants
-  equipmentItem('vampyric cloake') +
-  equipmentItem('tunac') +
+  equipmentItem("vampyric cloake") +
+  equipmentItem("tunac") +
   75 + // scratch n' sniff sword
   60 + // A Light
   equipmentItem("Mayor Ghost's sash") +
   30 + // old soft shoes
-  equipmentItem('ring of the Skeleton Lord') +
+  equipmentItem("ring of the Skeleton Lord") +
   25; // luck incense
 
 const outfitFamiliarWeight = 10; // luck incense
@@ -110,11 +114,11 @@ function exactPlusItem(drop: number, weight: number) {
 
 function itemDrop(thing: Skill | Effect | Override): number {
   if (thing instanceof Skill) {
-    return numericModifier(thing, 'item drop');
+    return numericModifier(thing, "item drop");
   } else if (thing instanceof Effect) {
     const override = overrides.get(thing);
     if (override) return itemDrop(override);
-    return numericModifier(thing, 'item drop');
+    return numericModifier(thing, "item drop");
   } else {
     return thing.item;
   }
@@ -122,9 +126,9 @@ function itemDrop(thing: Skill | Effect | Override): number {
 
 function foodBoozeDrop(thing: Skill | Effect | Override) {
   if (thing instanceof Skill) {
-    return numericModifier(thing, 'food drop') + numericModifier(thing, 'booze drop');
+    return numericModifier(thing, "food drop") + numericModifier(thing, "booze drop");
   } else if (thing instanceof Effect) {
-    return numericModifier(thing, 'food drop') + numericModifier(thing, 'booze drop');
+    return numericModifier(thing, "food drop") + numericModifier(thing, "booze drop");
   } else {
     return 0;
   }
@@ -132,11 +136,11 @@ function foodBoozeDrop(thing: Skill | Effect | Override) {
 
 function familiarWeight(thing: Skill | Effect | Override): number {
   if (thing instanceof Skill) {
-    return numericModifier(thing, 'familiar weight');
+    return numericModifier(thing, "familiar weight");
   } else if (thing instanceof Effect) {
     const override = overrides.get(thing);
     if (override) return familiarWeight(override);
-    return numericModifier(thing, 'familiar weight');
+    return numericModifier(thing, "familiar weight");
   } else {
     return thing.weight;
   }
@@ -160,13 +164,14 @@ function normalClass(cl: Class) {
 
 function safeUseItem(quantity: number, item: Item, maxPrice = 75000) {
   if (getItem(quantity, item, maxPrice) < quantity) {
-    print(`Failed to get enough ${item.name}.`, 'red');
+    print(`Failed to get enough ${item.name}.`, "red");
     return false;
   }
 
-  if (!get('_distentionPillUsed')) use(1, $item`distention pill`);
-  if (!get('_syntheticDogHairPillUsed') && myInebriety() >= 1) use(1, $item`synthetic dog hair pill`);
-  if (!get('spiceMelangeUsed') && myFullness() >= 3 && myInebriety() >= 3) {
+  if (!get("_distentionPillUsed")) use(1, $item`distention pill`);
+  if (!get("_syntheticDogHairPillUsed") && myInebriety() >= 1)
+    use(1, $item`synthetic dog hair pill`);
+  if (!get("spiceMelangeUsed") && myFullness() >= 3 && myInebriety() >= 3) {
     getItem(1, $item`spice melange`, 500000);
     use(1, $item`spice melange`);
   }
@@ -202,7 +207,11 @@ class Option {
   effect: Effect;
   source: Item | Skill | string | (() => void);
   cost: number | null;
-  constructor(effect: Effect, source: Item | Skill | string | (() => void) | null = null, cost: number | null = null) {
+  constructor(
+    effect: Effect,
+    source: Item | Skill | string | (() => void) | null = null,
+    cost: number | null = null
+  ) {
     this.effect = effect;
     this.source = source ?? effect.default;
     this.cost = cost;
@@ -228,8 +237,8 @@ class Option {
 
   turnsGiven() {
     if (this.source instanceof Item) {
-      return numericModifier(this.source, 'Effect Duration');
-    } else if (typeof this.source === 'string' && this.source.startsWith('genie effect')) {
+      return numericModifier(this.source, "Effect Duration");
+    } else if (typeof this.source === "string" && this.source.startsWith("genie effect")) {
       return 20;
     } else {
       return 1;
@@ -248,18 +257,18 @@ class Option {
 
   execute() {
     if (haveEffect(this.effect) > 0) return;
-    print(`Acquiring effect ${this.effect.name}...`, 'blue');
+    print(`Acquiring effect ${this.effect.name}...`, "blue");
     if (this.source instanceof Item && historicalPrice(this.source) < 50000) {
       safeUseItem(this.countNeeded(), this.source);
     } else if (this.source instanceof Skill) {
       useSkill(1, this.source);
-    } else if (typeof this.source === 'string' && !this.source.startsWith('#')) {
+    } else if (typeof this.source === "string" && !this.source.startsWith("#")) {
       try {
         cliExecute(this.source);
       } catch (e) {
-        print(`Couldn't get effect ${this.effect.name}: ${e}`, 'red');
+        print(`Couldn't get effect ${this.effect.name}: ${e}`, "red");
       }
-    } else if (typeof this.source === 'function') {
+    } else if (typeof this.source === "function") {
       this.source();
     }
   }
@@ -276,8 +285,10 @@ function addOption(option: Option) {
   }
 }
 
-addOption(new Option($effect`Synthesis: Collection`, 'synthesize collection', 13000));
-addOption(new Option($effect`Driving Observantly`, 'asdonlib 37; asdonmartin drive observantly', 500));
+addOption(new Option($effect`Synthesis: Collection`, "synthesize collection", 13000));
+addOption(
+  new Option($effect`Driving Observantly`, "asdonlib 37; asdonmartin drive observantly", 500)
+);
 addOption(new Option($effect`There's No N In Love`));
 addOption(new Option($effect`A Girl Named Sue`));
 addOption(new Option($effect`Do I Know You From Somewhere?`));
@@ -290,23 +301,27 @@ addOption(new Option($effect`Video... Games?`));
 addOption(
   new Option(
     $effect`Extra Sensory Perception`,
-    '# gong roach itemdrop # 3 turns',
+    "# gong roach itemdrop # 3 turns",
     historicalPrice($item`llama lama gong`)
   )
 );
 // 0-1 turn
 addOption(
-  new Option($effect`Snow Fortified`, '# use snow fort; camp rest # 0-1 turns', historicalPrice($item`snow fort`))
+  new Option(
+    $effect`Snow Fortified`,
+    "# use snow fort; camp rest # 0-1 turns",
+    historicalPrice($item`snow fort`)
+  )
 );
-addOption(new Option($effect`ChibiChanged&trade;`, '# ChibiBuddy buff'));
-addOption(new Option($effect`Bat-Adjacent Form`, '# cast Bat Form in combat'));
+addOption(new Option($effect`ChibiChanged&trade;`, "# ChibiBuddy buff"));
+addOption(new Option($effect`Bat-Adjacent Form`, "# cast Bat Form in combat"));
 // 1 turn; open Spookyraven first
-addOption(new Option($effect`[1609]Dancin' Fool`, '# Louvre It or Leave It'));
+addOption(new Option($effect`[1609]Dancin' Fool`, "# Louvre It or Leave It"));
 // 1 turn
 addOption(
   new Option(
     $effect`Doing The Hustle`,
-    '# Discotheque with 2 Disco Style',
+    "# Discotheque with 2 Disco Style",
     historicalPrice($item`One-day ticket to That 70s Volcano`) * 0.5
   )
 );
@@ -314,43 +329,57 @@ addOption(
 addOption(
   new Option(
     $effect`Tiffany's Breakfast`,
-    '# Jar of Psychoses (artist)',
+    "# Jar of Psychoses (artist)",
     historicalPrice($item`Jar of psychoses (The Pretentious Artist)`)
   )
 );
 // 0 turns (do day 1)
-addOption(new Option($effect`Wandering Eye Surgery`, '# Get from LOV Emergency Room'));
+addOption(new Option($effect`Wandering Eye Surgery`, "# Get from LOV Emergency Room"));
 // 0 turns (do day 2)
-addOption(new Option($effect`Open Heart Surgery`, '# Get from LOV Emergency Room'));
+addOption(new Option($effect`Open Heart Surgery`, "# Get from LOV Emergency Room"));
 // ugh.
 addOption(
   new Option(
     $effect`High-Falutin'`,
-    '# Grab a free drink from Gingerbread Gallery',
+    "# Grab a free drink from Gingerbread Gallery",
     historicalPrice($item`counterfeit city`)
   )
 );
 // RO stuff
 addOption(
-  new Option($effect`Octolus Gift`, '# Equip octolus-skin cloak at RO', historicalPrice($item`Octolus-skin cloak`))
+  new Option(
+    $effect`Octolus Gift`,
+    "# Equip octolus-skin cloak at RO",
+    historicalPrice($item`Octolus-skin cloak`)
+  )
 );
 addOption(
-  new Option($effect`Pajama Party`, '# Equip ratskin pajama pants at RO', historicalPrice($item`Ratskin pajama pants`))
+  new Option(
+    $effect`Pajama Party`,
+    "# Equip ratskin pajama pants at RO",
+    historicalPrice($item`Ratskin pajama pants`)
+  )
 );
 addOption(
   new Option(
     $effect`Spirit of Galactic Unity`,
-    '# Equip Spacegate scientist insignia at RO',
+    "# Equip Spacegate scientist insignia at RO",
     historicalPrice($item`Spacegate scientist insignia`)
   )
 );
-addOption(new Option($effect`familiar.enq`, '# terminal enquiry familiar.enq'));
+addOption(new Option($effect`familiar.enq`, "# terminal enquiry familiar.enq"));
 // addOption(new Option($effect`Fortune of the Wheel`, $item`Gift card`.historical_price() * 70, 'Get X - Wheel of Fortune from DoEC'));
 
 for (const item of Item.all()) {
   if (skipItems.has(item) || (historicalPrice(item) === 0 && !have(item))) continue;
-  const effect = effectModifier(item, 'Effect');
-  if (!effect || effect === $effect`none` || approxBonus(effect) < 0.001 || impossibleEffects.has(effect)) continue;
+  const effect = effectModifier(item, "Effect");
+  if (
+    !effect ||
+    effect === $effect`none` ||
+    approxBonus(effect) < 0.001 ||
+    impossibleEffects.has(effect)
+  )
+    continue;
   addOption(new Option(effect, item));
 }
 
@@ -363,20 +392,27 @@ for (const skill of Skill.all()) {
 
 for (const effect of Effect.all()) {
   if (!effect || effect === $effect`none` || approxBonus(effect) < 0.001) continue;
-  if (effect.attributes.includes('nohookah')) continue;
+  if (effect.attributes.includes("nohookah")) continue;
   addOption(new Option(effect, `genie effect ${effect.name}`, 50000));
 }
 
 for (const effectOptions of options.values()) {
   effectOptions.sort((x, y) => x.getCostWithOrgan() - y.getCostWithOrgan());
 }
-const selectedOptions = [...options.values()].map(effectOptions => effectOptions[0]);
+const selectedOptions = [...options.values()].map((effectOptions) => effectOptions[0]);
 selectedOptions.sort(
-  (x, y) => x.efficiency() * 10000 - approxBonus(x.effect) - (y.efficiency() * 10000 - approxBonus(y.effect))
+  (x, y) =>
+    x.efficiency() * 10000 -
+    approxBonus(x.effect) -
+    (y.efficiency() * 10000 - approxBonus(y.effect))
 );
 
 const passives = Skill.all().filter(
-  skill => skill.passive && approxBonus(skill) >= 0.001 && normalClass(skill.class) && !impossiblePassives.has(skill)
+  (skill) =>
+    skill.passive &&
+    approxBonus(skill) >= 0.001 &&
+    normalClass(skill.class) &&
+    !impossiblePassives.has(skill)
 );
 
 const rolloverEquipment: Item[] = $items`octolus-skin cloak, ratskin pajama pants, Spacegate scientist insignia`;
@@ -385,50 +421,65 @@ class Table {
   rows: (object | string | number)[][] = [];
 
   row(...cells: (object | string | number)[]) {
-    logprint(cells.join('\t'));
+    logprint(cells.join("\t"));
     this.rows.push(cells);
   }
 
   render() {
     const rowsHtml = this.rows.map(
-      cells => `<tr><td>${cells.map(cell => cell.toString()).join('</td><td>')}</td></tr>`
+      (cells) => `<tr><td>${cells.map((cell) => cell.toString()).join("</td><td>")}</td></tr>`
     );
-    return `<table border="1"><tbody>${rowsHtml.join('')}</table></tbody>`;
+    return `<table border="1"><tbody>${rowsHtml.join("")}</table></tbody>`;
   }
 }
 
-export function main(argsString = '') {
+export function main(argsString = "") {
   const args = argsString
     .trim()
-    .split(' ')
-    .map(s => s.trim())
-    .filter(s => s.length > 0);
+    .split(" ")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
   if (args.length === 0) {
-    print('usage: bkbuffs ( list | reminders | rollover | execute )');
-  } else if (args.includes('rollover')) {
-    maximize(`adventures, ${rolloverEquipment.map(equip => `equip ${equip.name}`).join(', ')}`, false);
-  } else if (args.includes('reminder') || args.includes('reminders')) {
+    print("usage: bkbuffs ( list | reminders | rollover | execute )");
+  } else if (args.includes("rollover")) {
+    maximize(
+      `adventures, ${rolloverEquipment.map((equip) => `equip ${equip.name}`).join(", ")}`,
+      false
+    );
+  } else if (args.includes("reminder") || args.includes("reminders")) {
     for (const [effect, effectOptions] of options.entries()) {
       if (haveEffect(effect) === 0 && effectOptions.length === 1) {
         const option = effectOptions[0];
-        if (typeof option.source === 'string' && option.source.startsWith('# ')) {
+        if (typeof option.source === "string" && option.source.startsWith("# ")) {
           print(`${effect.name}: ${option.source.slice(2)}`);
         }
       }
     }
-    if (!get('_feastedFamiliars').includes('Jumpsuited Hound Dog')) {
-      print('Feast familiar.');
+    if (!get("_feastedFamiliars").includes("Jumpsuited Hound Dog")) {
+      print("Feast familiar.");
     }
-  } else if (args.includes('list')) {
+  } else if (args.includes("list")) {
     let runningItemDrop = 0;
     let runningFamiliarWeight = 30; // moveable feast
     const table = new Table();
 
     runningItemDrop += 10;
-    table.row(0, exactPlusItem(2 * runningItemDrop, runningFamiliarWeight).toFixed(), 10, 0, 'The Packrat');
+    table.row(
+      0,
+      exactPlusItem(2 * runningItemDrop, runningFamiliarWeight).toFixed(),
+      10,
+      0,
+      "The Packrat"
+    );
 
     runningItemDrop += 10;
-    table.row(0, exactPlusItem(2 * runningItemDrop, runningFamiliarWeight).toFixed(), 10, 0, 'Spice Ghost');
+    table.row(
+      0,
+      exactPlusItem(2 * runningItemDrop, runningFamiliarWeight).toFixed(),
+      10,
+      0,
+      "Spice Ghost"
+    );
 
     runningItemDrop += outfitItemDrop;
     runningFamiliarWeight += outfitFamiliarWeight;
@@ -437,7 +488,7 @@ export function main(argsString = '') {
       exactPlusItem(2 * runningItemDrop, runningFamiliarWeight).toFixed(),
       outfitItemDrop,
       outfitFamiliarWeight,
-      'Outfit'
+      "Outfit"
     );
 
     for (const passive of passives) {
@@ -469,9 +520,9 @@ export function main(argsString = '') {
     print(`drop: ${2 * runningItemDrop}`);
     print(`familiar: ${runningFamiliarWeight} (${familiarMultiplier})`);
     print(`${exactPlusItem(2 * runningItemDrop, runningFamiliarWeight).toFixed()}`);
-  } else if (args.includes('execute')) {
-    if (!userConfirm('About to spend a crapton of meat. Ready?')) {
-      throw 'No user authorization.';
+  } else if (args.includes("execute")) {
+    if (!userConfirm("About to spend a crapton of meat. Ready?")) {
+      throw "No user authorization.";
     }
 
     // Fill liver enough for melange.
@@ -481,13 +532,16 @@ export function main(argsString = '') {
     // Thanksgetting.
     if (myDaycount() > 1) {
       const fullnessAvailable =
-        fullnessLimit() - myFullness() + (get('spiceMelangeUsed') ? 0 : 3) + (get('_distentionPillUsed') ? 0 : 1);
+        fullnessLimit() -
+        myFullness() +
+        (get("spiceMelangeUsed") ? 0 : 3) +
+        (get("_distentionPillUsed") ? 0 : 1);
       if (haveEffect($effect`Thanksgetting`) === 0 && fullnessAvailable >= 18) {
         for (const item of $items`candied sweet potatoes, green bean casserole, baked stuffing, cranberry cylinder, thanksgiving turkey, mince pie, mashed potatoes, warm gravy, bread roll`) {
           safeUseItem(1, item, 40000);
         }
       } else {
-        print(`Not enough fullness (${fullnessAvailable}) for Thanksgetting!`, 'red');
+        print(`Not enough fullness (${fullnessAvailable}) for Thanksgetting!`, "red");
       }
     }
 
@@ -495,10 +549,11 @@ export function main(argsString = '') {
 
     // Stock up on pocket wishes.
     const wishCount = selectedOptions.filter(
-      o => !have(o.effect) && typeof o.source === 'string' && o.source.startsWith('genie effect')
+      (o) => !have(o.effect) && typeof o.source === "string" && o.source.startsWith("genie effect")
     ).length;
     const wishesToBuy = wishCount - itemAmount($item`pocket wish`);
-    if (wishesToBuy > 0 && !userConfirm(`About to buy ${wishesToBuy} pocket wishes. OK?`)) throw 'No auth.';
+    if (wishesToBuy > 0 && !userConfirm(`About to buy ${wishesToBuy} pocket wishes. OK?`))
+      throw "No auth.";
     getItem(clamp(wishCount, 0, 200), $item`pocket wish`, 50000);
 
     // Next do... everything else.

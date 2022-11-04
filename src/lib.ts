@@ -35,9 +35,9 @@ import {
   visitUrl,
   wait,
   weightAdjustment,
-} from 'kolmafia';
-import { $class, $effect, $item, $items, $location, $skill, $thrall, get } from 'libram';
-import { getSewersState, throughSewers } from './sewers';
+} from "kolmafia";
+import { $class, $effect, $item, $items, $location, $skill, $thrall, get } from "libram";
+import { getSewersState, throughSewers } from "./sewers";
 
 export function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(n, max));
@@ -45,12 +45,12 @@ export function clamp(n: number, min: number, max: number) {
 
 export function getPropertyString(name: string, def: string | null = null): string {
   const str = getProperty(name);
-  return str === '' && def !== null ? def : str;
+  return str === "" && def !== null ? def : str;
 }
 
 export function getPropertyInt(name: string, default_: number | null = null): number {
   const str = getProperty(name);
-  if (str === '') {
+  if (str === "") {
     if (default_ === null) throw `Unknown property ${name}.`;
     else return default_;
   }
@@ -59,11 +59,11 @@ export function getPropertyInt(name: string, default_: number | null = null): nu
 
 export function getPropertyBoolean(name: string, default_: boolean | null = null) {
   const str = getProperty(name);
-  if (str === '') {
+  if (str === "") {
     if (default_ === null) throw `Unknown property ${name}.`;
     else return default_;
   }
-  return str === 'true';
+  return str === "true";
 }
 
 export function setPropertyInt(name: string, value: number) {
@@ -79,35 +79,35 @@ export function getChoice(adv: number) {
 }
 
 export function cheapest(...items: Item[]) {
-  const prices = items.map(it => mallPrice(it));
-  const pricesChecked = prices.map(p => (p < 100 ? 999999999 : p));
+  const prices = items.map((it) => mallPrice(it));
+  const pricesChecked = prices.map((p) => (p < 100 ? 999999999 : p));
   const minIndex = pricesChecked.reduce((i, x, j) => (pricesChecked[i] < x ? i : j), 0);
   return items[minIndex];
 }
 
 export function getItem(qty: number, item: Item, maxPrice: number) {
-  if (item !== $item`pocket wish` && qty * mallPrice(item) > 1000000) abort('bad get!');
+  if (item !== $item`pocket wish` && qty * mallPrice(item) > 1000000) abort("bad get!");
 
   try {
     retrieveItem(qty, item);
     // eslint-disable-next-line no-empty
-  } catch (e) { }
+  } catch (e) {}
 
   let remaining = qty - itemAmount(item);
   if (remaining <= 0) return qty;
 
   const getCloset = Math.min(remaining, closetAmount(item));
-  if (!takeCloset(getCloset, item)) abort('failed to remove from closet');
+  if (!takeCloset(getCloset, item)) abort("failed to remove from closet");
   remaining -= getCloset;
   if (remaining <= 0) return qty;
 
   let getMall = Math.min(remaining, shopAmount(item));
   if (!takeShop(getMall, item)) {
-    cliExecute('refresh shop');
-    cliExecute('refresh inventory');
+    cliExecute("refresh shop");
+    cliExecute("refresh inventory");
     remaining = qty - itemAmount(item);
     getMall = Math.min(remaining, shopAmount(item));
-    if (!takeShop(getMall, item)) abort('failed to remove from shop');
+    if (!takeShop(getMall, item)) abort("failed to remove from shop");
   }
   remaining -= getMall;
   if (remaining <= 0) return qty;
@@ -121,10 +121,10 @@ export function sausageMp(target: number) {
   if (
     myMp() < target &&
     myMaxmp() >= 400 &&
-    getPropertyInt('_sausagesEaten') < 23 &&
+    getPropertyInt("_sausagesEaten") < 23 &&
     availableAmount($item`magical sausage casing`) > 0
   ) {
-    eat(1, Item.get('magical sausage'));
+    eat(1, Item.get("magical sausage"));
   }
 }
 
@@ -134,7 +134,7 @@ export function myFamiliarWeight(familiar: Familiar | null = null) {
 }
 
 export function lastWasCombat() {
-  return !myLocation().noncombatQueue.includes(getProperty('lastEncounter'));
+  return !myLocation().noncombatQueue.includes(getProperty("lastEncounter"));
 }
 
 export function unclosetNickels() {
@@ -165,10 +165,10 @@ export function ensureJingle() {
     cliExecute(`csend to buffy || ${Math.round(myAdventures() * 1.1 + 200)} jingle`);
     for (let i = 0; i < 5; i++) {
       wait(3);
-      cliExecute('refresh status');
+      cliExecute("refresh status");
       if (haveEffect($effect`Jingle Jangle Jingle`) > 0) break;
     }
-    if (haveEffect($effect`Jingle Jangle Jingle`) === 0) abort('Get Jingle Bells first.');
+    if (haveEffect($effect`Jingle Jangle Jingle`) === 0) abort("Get Jingle Bells first.");
   }
 }
 
@@ -184,8 +184,8 @@ export function recordInstanceState() {
     `Zombo at image ${getImage($location`The Ancient Hobo Burial Ground`)}`,
     `Chester at image ${getImage($location`The Purple Light District`)}`,
   ];
-  let whiteboard = '';
-  const date = formatDateTime('yyyyMMdd', todayToString(), 'yyyy-MM-dd');
+  let whiteboard = "";
+  const date = formatDateTime("yyyyMMdd", todayToString(), "yyyy-MM-dd");
   whiteboard += `Status as of ${date} ${timeToString()}:\n`;
   for (const line of lines) {
     print(line);
@@ -196,28 +196,28 @@ export function recordInstanceState() {
 }
 
 const places: { [index: string]: { name: string; number: number } } = {
-  'Hobopolis Town Square': {
-    name: 'townsquare',
+  "Hobopolis Town Square": {
+    name: "townsquare",
     number: 2,
   },
-  'Burnbarrel Blvd.': {
-    name: 'burnbarrelblvd',
+  "Burnbarrel Blvd.": {
+    name: "burnbarrelblvd",
     number: 4,
   },
-  'Exposure Esplanade': {
-    name: 'exposureesplanade',
+  "Exposure Esplanade": {
+    name: "exposureesplanade",
     number: 5,
   },
-  'The Heap': {
-    name: 'theheap',
+  "The Heap": {
+    name: "theheap",
     number: 6,
   },
-  'The Ancient Hobo Burial Ground': {
-    name: 'burialground',
+  "The Ancient Hobo Burial Ground": {
+    name: "burialground",
     number: 7,
   },
-  'The Purple Light District': {
-    name: 'purplelightdistrict',
+  "The Purple Light District": {
+    name: "purplelightdistrict",
     number: 8,
   },
 };
@@ -248,47 +248,59 @@ export function memoizeTurncount<T>(func: (...args: []) => T, turnThreshold = 1)
   return result;
 }
 
-export const getImageTownsquare = memoizeTurncount(() => getImage($location`Hobopolis Town Square`), 10);
+export const getImageTownsquare = memoizeTurncount(
+  () => getImage($location`Hobopolis Town Square`),
+  10
+);
 export const getImageBb = memoizeTurncount(() => getImage($location`Burnbarrel Blvd.`));
 export const getImageEe = memoizeTurncount(() => getImage($location`Exposure Esplanade`), 10);
 export const getImageHeap = memoizeTurncount(() => getImage($location`The Heap`), 10);
-export const getImagePld = memoizeTurncount(() => getImage($location`The Purple Light District`), 10);
-export const getImageAhbg = memoizeTurncount(() => getImage($location`The Ancient Hobo Burial Ground`), 10);
+export const getImagePld = memoizeTurncount(
+  () => getImage($location`The Purple Light District`),
+  10
+);
+export const getImageAhbg = memoizeTurncount(
+  () => getImage($location`The Ancient Hobo Burial Ground`),
+  10
+);
 
-export function wrapMain(args = '', action: () => void) {
+export function wrapMain(args = "", action: () => void) {
   try {
-    turbo = args.includes('turbo');
+    turbo = args.includes("turbo");
     if (myClass() === $class`Pastamancer` && myThrall() !== $thrall`Elbow Macaroni`) {
       useSkill(1, $skill`Bind Undead Elbow Macaroni`);
     }
     ensureJingle();
-    cliExecute('counters nowarn Fortune Cookie');
-    cliExecute('mood apathetic');
-    cliExecute('ccs minehobo2');
-    if (get('sourceTerminalEducate1') !== 'digitize.edu' || get('sourceTerminalEducate2') !== 'extract.edu') {
-      cliExecute('terminal educate digitize; terminal educate extract');
+    cliExecute("counters nowarn Fortune Cookie");
+    cliExecute("mood apathetic");
+    cliExecute("ccs forko");
+    if (
+      get("sourceTerminalEducate1") !== "digitize.edu" ||
+      get("sourceTerminalEducate2") !== "extract.edu"
+    ) {
+      cliExecute("terminal educate digitize; terminal educate extract");
     }
-    if (get('boomBoxSong') !== 'Food Vibrations') cliExecute('boombox food');
-    setProperty('hpAutoRecovery', turbo ? '0.5' : '0.8');
-    setProperty('hpAutoRecoveryTarget', '0.95');
+    if (get("boomBoxSong") !== "Food Vibrations") cliExecute("boombox food");
+    setProperty("hpAutoRecovery", turbo ? "0.5" : "0.8");
+    setProperty("hpAutoRecoveryTarget", "0.95");
     action();
-    print('Done mining.');
+    print("Done mining.");
   } finally {
     setAutoAttack(0);
-    setProperty('minehobo_lastObjective', '');
-    setProperty('minehobo_lastStats', '');
-    setProperty('minehobo_lastFamiliar', '');
+    setProperty("minehobo_lastObjective", "");
+    setProperty("minehobo_lastStats", "");
+    setProperty("minehobo_lastFamiliar", "");
     unclosetNickels();
     if (throughSewers()) recordInstanceState();
   }
 }
 
 export function extractInt(regex: RegExp, text: string, group = 1) {
-  if (!regex.global) throw 'Regexes must be global.';
+  if (!regex.global) throw "Regexes must be global.";
   let result = 0;
   let match;
   while ((match = regex.exec(text)) !== null) {
-    if (match[group] === 'a') {
+    if (match[group] === "a") {
       result += 1;
     } else {
       result += parseInt(match[group], 10);
@@ -301,5 +313,5 @@ export function printLines(...lines: string[]) {
   for (const line of lines) {
     logprint(line);
   }
-  printHtml(lines.map(line => line.replace('<', '&lt;')).join('\n'));
+  printHtml(lines.map((line) => line.replace("<", "&lt;")).join("\n"));
 }

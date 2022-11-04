@@ -1,15 +1,16 @@
-import { getClanName, print } from 'kolmafia';
-import { $location } from 'libram';
-import { AdventuringManager, PrimaryGoal } from './adventure';
-import { adventureRunOrStasis } from './combat';
-import { setChoice, wrapMain } from './lib';
-import { moodAddItem, moodMinusCombat } from './mood';
-import { getSewersState, sewerAccess, throughSewers } from './sewers';
-import { setClan } from './wl';
+import { getClanName, print } from "kolmafia";
+import { $location } from "libram";
+import { AdventuringManager, PrimaryGoal } from "./adventure";
+import { adventureRunOrStasis } from "./combat";
+import { setChoice, wrapMain } from "./lib";
+import { moodAddItem, moodMinusCombat } from "./mood";
+import { getSewersState, sewerAccess, throughSewers } from "./sewers";
+import { setClan } from "./wl";
 
 export function main(args: string | undefined) {
   if (args !== undefined) setClan(args);
-  if (!throughSewers() && !sewerAccess()) throw `You do not have dungeon access in clan ${getClanName()}.`;
+  if (!throughSewers() && !sewerAccess())
+    throw `You do not have dungeon access in clan ${getClanName()}.`;
 
   wrapMain(args, () => {
     setChoice(197, 2); // Turn valve - skip
@@ -38,9 +39,9 @@ export function main(args: string | undefined) {
     }
 
     if (state.grates === 20 && state.valves === 20) {
-      print('Successfully finished sewers.', 'green');
+      print("Successfully finished sewers.", "green");
     } else {
-      throw 'Something went wrong. Sewering failed.';
+      throw "Something went wrong. Sewering failed.";
     }
   });
 }

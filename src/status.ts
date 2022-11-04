@@ -1,4 +1,4 @@
-import { farmingClans, printClanStatus, setClan } from './wl';
+import { farmingClans, printClanStatus, setClan } from "./wl";
 
 export function main() {
   for (const clanName of farmingClans) {

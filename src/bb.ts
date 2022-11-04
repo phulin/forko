@@ -1,9 +1,9 @@
-import { floor, print, visitUrl } from 'kolmafia';
-import { $location } from 'libram';
-import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
-import { adventureMacroAuto, Macro } from './combat';
-import { extractInt, getImageBb, mustStop, printLines, setChoice, stopAt, wrapMain } from './lib';
-import { expectedTurns, moodMinusCombat, tryEnsureTriviaMaster } from './mood';
+import { floor, print, visitUrl } from "kolmafia";
+import { $location } from "libram";
+import { AdventuringManager, PrimaryGoal, usualDropItems } from "./adventure";
+import { adventureMacroAuto, Macro } from "./combat";
+import { extractInt, getImageBb, mustStop, printLines, setChoice, stopAt, wrapMain } from "./lib";
+import { expectedTurns, moodMinusCombat, tryEnsureTriviaMaster } from "./mood";
 
 const STACKHEIGHT = 34;
 function tirevalancheKills(tires: number) {
@@ -22,14 +22,17 @@ export function getBbState() {
   const state = new BBState();
   state.image = getImageBb();
 
-  const logText = visitUrl('clan_raidlogs.php');
+  const logText = visitUrl("clan_raidlogs.php");
   state.estimatedProgress = extractInt(/defeated +Hot hobo x ([0-9]+)/g, logText);
   state.tirevalanches = extractInt(/started (a|[0-9]+) tirevalanche/g, logText);
   state.tiresTotal = extractInt(/threw ([0-9]+) tire/g, logText);
   state.tiresCurrent = state.tiresTotal - STACKHEIGHT * state.tirevalanches;
   state.estimatedProgress += tirevalancheKills(STACKHEIGHT) * state.tirevalanches;
-  if (state.estimatedProgress < state.image * 50 || state.estimatedProgress > (state.image + 1) * 50) {
-    print('WARNING: State misaligned.');
+  if (
+    state.estimatedProgress < state.image * 50 ||
+    state.estimatedProgress > (state.image + 1) * 50
+  ) {
+    print("WARNING: State misaligned.");
     state.estimatedProgress = state.image * 50;
   }
   return state;
@@ -37,7 +40,7 @@ export function getBbState() {
 
 export function doBb(stopTurncount: number) {
   if (getImageBb() >= 10) {
-    print('Finished BB.');
+    print("Finished BB.");
     return;
   }
 
@@ -69,7 +72,12 @@ export function doBb(stopTurncount: number) {
 
     moodMinusCombat(expectedTurns(stopTurncount), estimatedTurns, maxPricePerTurn);
     tryEnsureTriviaMaster(estimatedTurns);
-    const manager = new AdventuringManager($location`Burnbarrel Blvd.`, PrimaryGoal.MINUS_COMBAT, [], usualDropItems);
+    const manager = new AdventuringManager(
+      $location`Burnbarrel Blvd.`,
+      PrimaryGoal.MINUS_COMBAT,
+      [],
+      usualDropItems
+    );
     manager.preAdventure();
     adventureMacroAuto($location`Burnbarrel Blvd.`, Macro.stasis().kill());
 
@@ -81,7 +89,7 @@ export function doBb(stopTurncount: number) {
     );
   }
   if (getImageBb() >= 10) {
-    print('Finished BB.');
+    print("Finished BB.");
   }
 }
 

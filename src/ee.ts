@@ -8,10 +8,10 @@ import {
   print,
   setProperty,
   visitUrl,
-} from 'kolmafia';
-import { $location } from 'libram';
-import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
-import { adventureMacroAuto, Macro } from './combat';
+} from "kolmafia";
+import { $location } from "libram";
+import { AdventuringManager, PrimaryGoal, usualDropItems } from "./adventure";
+import { adventureMacroAuto, Macro } from "./combat";
 import {
   clamp,
   extractInt,
@@ -23,16 +23,16 @@ import {
   setChoice,
   stopAt,
   wrapMain,
-} from './lib';
-import { expectedTurns, moodBaseline, moodMinusCombat } from './mood';
+} from "./lib";
+import { expectedTurns, moodBaseline, moodMinusCombat } from "./mood";
 
 // Formatted like clanid:ascension;clanid:ascension
 function clanYodelAscensions() {
   const result = new Map<number, number>();
-  for (const component of getProperty('minehobo_eeLastYodel').split(';')) {
-    if (component === '') continue;
+  for (const component of getProperty("minehobo_eeLastYodel").split(";")) {
+    if (component === "") continue;
 
-    const subcomponents = component.split(':');
+    const subcomponents = component.split(":");
     result.set(parseInt(subcomponents[0], 10), parseInt(subcomponents[1], 10));
   }
   return result;
@@ -43,12 +43,14 @@ function yodeledThisAscension() {
 }
 
 export function recordYodel() {
-  print(`Recording yodel. Current: ${getProperty('minehobo_eeLastYodel')}`);
+  print(`Recording yodel. Current: ${getProperty("minehobo_eeLastYodel")}`);
   const oldValue = clanYodelAscensions();
   oldValue.set(getClanId(), myAscensions());
-  const result = [...oldValue.entries()].map(([clanId, ascension]) => `${clanId}:${ascension}`).join(';');
+  const result = [...oldValue.entries()]
+    .map(([clanId, ascension]) => `${clanId}:${ascension}`)
+    .join(";");
   print(`New: ${result}`);
-  setProperty('minehobo_eeLastYodel', result);
+  setProperty("minehobo_eeLastYodel", result);
 }
 
 class EEState {
@@ -73,10 +75,10 @@ export function getState(checkImage = true) {
     state.image = getImageEe();
   }
   if (state.image < 0) {
-    abort('Cannot get to EE.');
+    abort("Cannot get to EE.");
   }
 
-  const logText = visitUrl('clan_raidlogs.php');
+  const logText = visitUrl("clan_raidlogs.php");
   const pipeRe = /broke (a|[0-9]+) water pipe/g;
   state.icicles = extractInt(pipeRe, logText);
   const divertRe = /diverted some cold water out of Exposure Esplanade \(([0-9]+) turn/g;
@@ -92,7 +94,9 @@ export function doEe(stopTurncount: number, pass: number) {
   let state = getState(true);
   let yodeled = yodeledThisAscension();
   if (
-    ((pass === 1 && (state.icicles < ICICLE_COUNT || state.diverts + state.flimflams < DIVERT_COUNT) && !yodeled) ||
+    ((pass === 1 &&
+      (state.icicles < ICICLE_COUNT || state.diverts + state.flimflams < DIVERT_COUNT) &&
+      !yodeled) ||
       (pass === 2 && !yodeled) ||
       (pass === 3 && state.image >= 9) ||
       pass === 4) &&
@@ -109,13 +113,18 @@ export function doEe(stopTurncount: number, pass: number) {
     // Second pass: Go until yodeling.
     // Third pass: Go until done, unless image < 9.
     while (
-      ((pass === 1 && (state.icicles < ICICLE_COUNT || state.diverts + state.flimflams < DIVERT_COUNT) && !yodeled) ||
+      ((pass === 1 &&
+        (state.icicles < ICICLE_COUNT || state.diverts + state.flimflams < DIVERT_COUNT) &&
+        !yodeled) ||
         (pass === 2 && !yodeled) ||
         (pass === 3 && state.image >= 9) ||
         pass === 4) &&
       !mustStop(stopTurncount)
     ) {
-      if (state.icicles >= ICICLE_COUNT && (state.diverts >= DIVERT_COUNT || state.flimflams + state.diverts >= 21)) {
+      if (
+        state.icicles >= ICICLE_COUNT &&
+        (state.diverts >= DIVERT_COUNT || state.flimflams + state.diverts >= 21)
+      ) {
         // We've done enough BB that making icicles lets us skip an adventure to find yodeling.
         setChoice(215, 3);
       } else {
@@ -125,7 +134,8 @@ export function doEe(stopTurncount: number, pass: number) {
       // Yodel heart out if we're done with icicles.
       setChoice(217, state.icicles >= ICICLE_COUNT ? 3 : 1);
 
-      const needMinusCombat = !yodeled || state.icicles < ICICLE_COUNT || state.flimflams + state.diverts < 21;
+      const needMinusCombat =
+        !yodeled || state.icicles < ICICLE_COUNT || state.flimflams + state.diverts < 21;
       const estimatedTurns = 2 * (ICICLE_COUNT - state.icicles) + state.image * 10;
       if (needMinusCombat) {
         moodMinusCombat(expectedTurns(stopTurncount), clamp(estimatedTurns, 0, 300));
@@ -135,7 +145,7 @@ export function doEe(stopTurncount: number, pass: number) {
       const manager = new AdventuringManager(
         $location`Exposure Esplanade`,
         needMinusCombat ? PrimaryGoal.MINUS_COMBAT : PrimaryGoal.NONE,
-        needMinusCombat ? [] : ['familiar weight'],
+        needMinusCombat ? [] : ["familiar weight"],
         usualDropItems
       );
       manager.preAdventure();
@@ -162,11 +172,11 @@ export function doEe(stopTurncount: number, pass: number) {
     }
 
     if (getImage($location`Exposure Esplanade`) === 10) {
-      print('At Frosty. Stopping!');
+      print("At Frosty. Stopping!");
     } else if (getImage($location`Burnbarrel Blvd.`) < 8) {
-      print('Stopping EE. Go do BB.');
+      print("Stopping EE. Go do BB.");
     } else {
-      print('Done with EE for now.');
+      print("Done with EE for now.");
     }
   }
 }

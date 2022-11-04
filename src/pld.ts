@@ -1,10 +1,19 @@
-import { lastChoice, print, setAutoAttack, visitUrl } from 'kolmafia';
-import { $location } from 'libram';
-import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
-import { adventureMacroAuto, adventureRunOrStasis, Macro } from './combat';
-import { getState as getEeState } from './ee';
-import { extractInt, getImagePld, lastWasCombat, mustStop, printLines, setChoice, stopAt, wrapMain } from './lib';
-import { expectedTurns, moodPlusCombat } from './mood';
+import { lastChoice, print, setAutoAttack, visitUrl } from "kolmafia";
+import { $location } from "libram";
+import { AdventuringManager, PrimaryGoal, usualDropItems } from "./adventure";
+import { adventureMacroAuto, adventureRunOrStasis, Macro } from "./combat";
+import { getState as getEeState } from "./ee";
+import {
+  extractInt,
+  getImagePld,
+  lastWasCombat,
+  mustStop,
+  printLines,
+  setChoice,
+  stopAt,
+  wrapMain,
+} from "./lib";
+import { expectedTurns, moodPlusCombat } from "./mood";
 
 const FREE_RUN_PLD = true;
 
@@ -16,7 +25,7 @@ class PLDState {
 
 function getPldState() {
   const result = new PLDState();
-  const logText = visitUrl('clan_raidlogs.php');
+  const logText = visitUrl("clan_raidlogs.php");
   result.fights = extractInt(/started (a|[0-9]+) barfight/g, logText);
   result.flimflams = extractInt(/flimflammed some hobos \(([0-9]+) turn/g, logText);
   result.kills = extractInt(/defeated +Sleaze hobo x ([0-9]+)/g, logText);
@@ -25,7 +34,7 @@ function getPldState() {
 
 export function doPld(stopTurncount: number) {
   if (getImagePld() === 10) {
-    print('At Chester.');
+    print("At Chester.");
     return;
   }
 
@@ -75,7 +84,7 @@ export function doPld(stopTurncount: number) {
   }
 
   if (getImagePld.forceUpdate() >= 10) {
-    print('At Chester.');
+    print("At Chester.");
   }
 }
 

@@ -6,26 +6,38 @@ import {
   print,
   setAutoAttack,
   visitUrl,
-} from 'kolmafia';
-import { $item, $location } from 'libram';
-import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
-import { adventureRunOrStasis } from './combat';
-import { extractInt, getChoice, memoizeTurncount, mustStop, setChoice, stopAt, wrapMain } from './lib';
-import { expectedTurns, moodAddItem, moodMinusCombat } from './mood';
+} from "kolmafia";
+import { $item, $location } from "libram";
+import { AdventuringManager, PrimaryGoal, usualDropItems } from "./adventure";
+import { adventureRunOrStasis } from "./combat";
+import {
+  extractInt,
+  getChoice,
+  memoizeTurncount,
+  mustStop,
+  setChoice,
+  stopAt,
+  wrapMain,
+} from "./lib";
+import { expectedTurns, moodAddItem, moodMinusCombat } from "./mood";
 
 export const getSewersState = memoizeTurncount(() => {
-  const logText = visitUrl('clan_raidlogs.php');
+  const logText = visitUrl("clan_raidlogs.php");
   const grates = extractInt(/opened (a|[0-9]+) sewer grate/g, logText);
-  const valves = extractInt(/lowered the water level( [0-9]+ times?)? \(([0-9]+) turn/g, logText, 2);
+  const valves = extractInt(
+    /lowered the water level( [0-9]+ times?)? \(([0-9]+) turn/g,
+    logText,
+    2
+  );
   return { grates, valves };
 });
 
 export function throughSewers() {
-  return visitUrl('clan_hobopolis.php').includes('clan_hobopolis.php?place=2');
+  return visitUrl("clan_hobopolis.php").includes("clan_hobopolis.php?place=2");
 }
 
 export function sewerAccess() {
-  return visitUrl('clan_hobopolis.php').includes('adventure.php?snarfblat=166');
+  return visitUrl("clan_hobopolis.php").includes("adventure.php?snarfblat=166");
 }
 
 function doContinue(stopTurncount: number) {
@@ -33,13 +45,14 @@ function doContinue(stopTurncount: number) {
 }
 
 export function doSewers(stopTurncount: number) {
-  if (!throughSewers() && !sewerAccess()) throw `You do not have dungeon access in clan ${getClanName()}.`;
+  if (!throughSewers() && !sewerAccess())
+    throw `You do not have dungeon access in clan ${getClanName()}.`;
 
   let state = getSewersState();
   if (doContinue(stopTurncount)) {
     const overdrunk = myInebriety() > inebrietyLimit();
     if (overdrunk) {
-      print('WARNING: Going through sewers while overdrunk is not recommended.', 'red');
+      print("WARNING: Going through sewers while overdrunk is not recommended.", "red");
     }
 
     // Gnaw through bars
@@ -62,7 +75,12 @@ export function doSewers(stopTurncount: number) {
 
       const location = $location`A Maze of Sewer Tunnels`;
       moodMinusCombat(expectedTurns(stopTurncount), maxTurnsEstimate);
-      const manager = new AdventuringManager($location`A Maze of Sewer Tunnels`, PrimaryGoal.MINUS_COMBAT, [], equips);
+      const manager = new AdventuringManager(
+        $location`A Maze of Sewer Tunnels`,
+        PrimaryGoal.MINUS_COMBAT,
+        [],
+        equips
+      );
       manager.setupFreeRuns();
       manager.preAdventure();
       if (!manager.willFreeRun) moodAddItem();
@@ -73,10 +91,10 @@ export function doSewers(stopTurncount: number) {
     }
   }
 
-  if (throughSewers()) print('Cleared sewers!');
-  else print('Stopping prematurely... not through sewers.');
+  if (throughSewers()) print("Cleared sewers!");
+  else print("Stopping prematurely... not through sewers.");
 }
 
-export function main(args = '') {
+export function main(args = "") {
   wrapMain(args, () => doSewers(stopAt(args)));
 }

@@ -11,12 +11,21 @@ import {
   round,
   toFloat,
   visitUrl,
-} from 'kolmafia';
-import { $effect, $item, $location, $skill, $stat } from 'libram';
-import { AdventuringManager, PrimaryGoal, usualDropItems } from './adventure';
-import { adventureMacro, Macro } from './combat';
-import { extractInt, getImage, memoizeTurncount, mustStop, setChoice, turboMode } from './lib';
-import { ensureEffect, expectedTurns, moodBaseline } from './mood';
+} from "kolmafia";
+import { $effect, $item, $location, $skill, $stat } from "libram";
+import { AdventuringManager, PrimaryGoal, usualDropItems } from "./adventure";
+import { adventureMacro, Macro } from "./combat";
+import {
+  extractInt,
+  getImage,
+  memoizeTurncount,
+  mustStop,
+  setChoice,
+  stopAt,
+  turboMode,
+  wrapMain,
+} from "./lib";
+import { ensureEffect, expectedTurns, moodBaseline } from "./mood";
 
 enum PartType {
   HOT,
@@ -27,7 +36,7 @@ enum PartType {
   PHYSICAL,
 }
 
-class HoboPart {
+class MonsterPart {
   type: PartType;
   name: string;
   regex: RegExp;
@@ -41,39 +50,69 @@ class HoboPart {
   }
 }
 
-const allParts = new Map<PartType, HoboPart>([
-  [PartType.HOT, new HoboPart(PartType.HOT, 'hot', /pairs? of charred hobo boots/, $effect`Spirit of Cayenne`)],
-  [PartType.COLD, new HoboPart(PartType.COLD, 'cold', /pairs? of frozen hobo eyes/, $effect`Spirit of Peppermint`)],
-  [PartType.STENCH, new HoboPart(PartType.STENCH, 'stench', /piles? of stinking hobo guts/, $effect`Spirit of Garlic`)],
-  [PartType.SLEAZE, new HoboPart(PartType.SLEAZE, 'sleaze', /hobo crotch/, $effect`Spirit of Bacon Grease`)],
-  [PartType.SPOOKY, new HoboPart(PartType.SPOOKY, 'spooky', /creepy hobo skull/, $effect`Spirit of Wormwood`)],
-  [PartType.PHYSICAL, new HoboPart(PartType.PHYSICAL, 'physical', /hobo skin/, $effect`none`)],
+const allParts = new Map<PartType, MonsterPart>([
+  [
+    PartType.HOT,
+    new MonsterPart(
+      PartType.HOT,
+      "hot",
+      /pairs? of charred hobo boots/,
+      $effect`Spirit of Cayenne`
+    ),
+  ],
+  [
+    PartType.COLD,
+    new MonsterPart(
+      PartType.COLD,
+      "cold",
+      /pairs? of frozen hobo eyes/,
+      $effect`Spirit of Peppermint`
+    ),
+  ],
+  [
+    PartType.STENCH,
+    new MonsterPart(
+      PartType.STENCH,
+      "stench",
+      /piles? of stinking hobo guts/,
+      $effect`Spirit of Garlic`
+    ),
+  ],
+  [
+    PartType.SLEAZE,
+    new MonsterPart(PartType.SLEAZE, "sleaze", /hobo crotch/, $effect`Spirit of Bacon Grease`),
+  ],
+  [
+    PartType.SPOOKY,
+    new MonsterPart(PartType.SPOOKY, "spooky", /creepy hobo skull/, $effect`Spirit of Wormwood`),
+  ],
+  [PartType.PHYSICAL, new MonsterPart(PartType.PHYSICAL, "physical", /hobo skin/, $effect`none`)],
 ]);
 
 class PartPlan {
-  type: HoboPart;
+  type: MonsterPart;
   count = 0;
 
-  constructor(type: HoboPart) {
+  constructor(type: MonsterPart) {
     this.type = type;
   }
 }
 
 const currentParts = memoizeTurncount(() => {
-  const result = new Map<HoboPart, number>();
-  const text = visitUrl('clan_hobopolis.php?place=3&action=talkrichard&whichtalk=3');
+  const result = new Map<MonsterPart, number>();
+  const text = visitUrl("clan_hobopolis.php?place=3&action=talkrichard&whichtalk=3");
   for (const part of allParts.values()) {
-    const partRe = new RegExp(`<b>(a|[0-9]+)</b> ${part.regex.source}`, 'g');
+    const partRe = new RegExp(`<b>(a|[0-9]+)</b> ${part.regex.source}`, "g");
     result.set(part, extractInt(partRe, text));
   }
   return result;
 });
 
 const pldAccessible = memoizeTurncount(() => {
-  return visitUrl('clan_hobopolis.php?place=8').match(/purplelightdistrict[0-9]+.gif/);
+  return visitUrl("clan_hobopolis.php?place=8").match(/purplelightdistrict[0-9]+.gif/);
 });
 
-function getParts(part: HoboPart, desiredParts: number, stopTurncount: number) {
+function getParts(part: MonsterPart, desiredParts: number, stopTurncount: number) {
   const current = currentParts().get(part) as number;
   if (current >= desiredParts || pldAccessible() || mustStop(stopTurncount)) return;
 
@@ -82,18 +121,23 @@ function getParts(part: HoboPart, desiredParts: number, stopTurncount: number) {
   moodBaseline(expected);
   ensureEffect($effect`Ur-Kel's Aria of Annoyance`, current - desiredParts);
 
-  while ((currentParts().get(part) as number) < desiredParts && !pldAccessible() && !mustStop(stopTurncount)) {
+  while (
+    (currentParts().get(part) as number) < desiredParts &&
+    !pldAccessible() &&
+    !mustStop(stopTurncount)
+  ) {
     const manager = new AdventuringManager(
       $location`Hobopolis Town Square`,
       PrimaryGoal.NONE,
-      ['familiar weight', '-0.05 ml 0 min'],
+      ["familiar weight", "-0.05 ml 0 min"],
       usualDropItems
     );
     manager.preAdventure();
 
     if ([PartType.COLD, PartType.STENCH, PartType.SPOOKY, PartType.SLEAZE].includes(part.type)) {
       const predictedDamage =
-        (32 + 0.5 * myBuffedstat($stat`Mysticality`)) * (1 + numericModifier('spell damage percent') / 100);
+        (32 + 0.5 * myBuffedstat($stat`Mysticality`)) *
+        (1 + numericModifier("spell damage percent") / 100);
       if (predictedDamage < 505) {
         abort(`Predicted spell damage ${round(predictedDamage)} is not enough to overkill hobos.`);
       }
@@ -101,18 +145,20 @@ function getParts(part: HoboPart, desiredParts: number, stopTurncount: number) {
         cliExecute(part.intrinsic.default);
       }
       Macro.stasis()
-        .if_('monstername sausage goblin', Macro.skill($skill`Saucegeyser`).repeat())
+        .if_("monstername sausage goblin", Macro.skill($skill`Saucegeyser`).repeat())
         .skill($skill`Stuffed Mortar Shell`)
         .externalIf(!turboMode(), Macro.skill($skill`Cannelloni Cannon`).repeat())
         .item($item`seal tooth`)
         .setAutoAttack();
     } else if (part.type === PartType.HOT) {
       Macro.stasis()
-        .skill($skill`Saucegeyser`).repeat()
+        .skill($skill`Saucegeyser`)
+        .repeat()
         .setAutoAttack();
     } else if (part.type === PartType.PHYSICAL) {
       Macro.stasis()
-        .skill($skill`Lunging Thrust-Smack`).repeat()
+        .skill($skill`Lunging Thrust-Smack`)
+        .repeat()
         .setAutoAttack();
     }
 
@@ -122,10 +168,10 @@ function getParts(part: HoboPart, desiredParts: number, stopTurncount: number) {
 
 export function doTownsquare(stopTurncount: number) {
   if (pldAccessible()) {
-    print('Finished Town Square. Continuing...');
+    print("Finished Town Square. Continuing...");
     return;
   } else if (mustStop(stopTurncount)) {
-    print('Out of adventures.');
+    print("Out of adventures.");
     return;
   }
 
@@ -135,7 +181,7 @@ export function doTownsquare(stopTurncount: number) {
   setChoice(225, 3); // Skip tent.
 
   // print('Making available scarehobos.');
-  visitUrl('clan_hobopolis.php?preaction=simulacrum&place=3&qty=1&makeall=1');
+  visitUrl("clan_hobopolis.php?preaction=simulacrum&place=3&qty=1&makeall=1");
 
   const image = getImage($location`Hobopolis Town Square`);
   if (image < 11 && myInebriety() <= inebrietyLimit()) {
@@ -146,7 +192,7 @@ export function doTownsquare(stopTurncount: number) {
     // Start with the part with the fewest (should be 0).
     const partCounts = [...currentParts().entries()];
     partCounts.sort((x, y) => x[1] - y[1]);
-    const plan = partCounts.map(([part]: [HoboPart, number]) => new PartPlan(part));
+    const plan = partCounts.map(([part]: [MonsterPart, number]) => new PartPlan(part));
     for (const [idx, [, partCount]] of partCounts.entries()) {
       if (hobosRemaining > 0 && idx < partCounts.length - 1) {
         const [, nextPartCount] = partCounts[idx + 1];
@@ -154,7 +200,10 @@ export function doTownsquare(stopTurncount: number) {
         // Each part we add to our goal kills this many hobos - for the part with lowest, it's 9.
         // The part with the second lowest, it's 2 hobos plus 1 scarehobo or 10.
         const scarehoboFactor = idx + 9;
-        const partsThisRound = Math.min(ceil(hobosRemaining / toFloat(scarehoboFactor) - 0.001), killsToNext);
+        const partsThisRound = Math.min(
+          ceil(hobosRemaining / toFloat(scarehoboFactor) - 0.001),
+          killsToNext
+        );
         for (let idx2 = 0; idx2 <= idx; idx2++) {
           plan[idx2].count += partsThisRound;
         }
@@ -179,18 +228,18 @@ export function doTownsquare(stopTurncount: number) {
     for (const partPlan of plan) {
       getParts(partPlan.type, partPlan.count, stopTurncount);
     }
-    print('Making available scarehobos.');
-    visitUrl('clan_hobopolis.php?preaction=simulacrum&place=3&qty=1&makeall=1');
+    print("Making available scarehobos.");
+    visitUrl("clan_hobopolis.php?preaction=simulacrum&place=3&qty=1&makeall=1");
   }
-  print('Close to goal; using 1-by-1 strategy.');
+  print("Close to goal; using 1-by-1 strategy.");
 
   while (!pldAccessible() && !mustStop(stopTurncount)) {
     if (myInebriety() <= inebrietyLimit()) {
       for (const part of allParts.values()) {
         getParts(part, 1, stopTurncount);
       }
-      print('Making available scarehobos.');
-      visitUrl('clan_hobopolis.php?preaction=simulacrum&place=3&qty=1&makeall=1');
+      print("Making available scarehobos.");
+      visitUrl("clan_hobopolis.php?preaction=simulacrum&place=3&qty=1&makeall=1");
     } else {
       const physical = allParts.get(PartType.PHYSICAL)!;
       getParts(physical, currentParts().get(physical)! + 1, stopTurncount);
@@ -198,8 +247,12 @@ export function doTownsquare(stopTurncount: number) {
     currentParts.forceUpdate();
   }
   if (pldAccessible()) {
-    print('PLD accessible. Done with town square.');
+    print("PLD accessible. Done with town square.");
   } else if (mustStop(stopTurncount)) {
-    print('Out of adventures.');
+    print("Out of adventures.");
   }
+}
+
+export function main(args: string) {
+  wrapMain(args, () => doTownsquare(stopAt(args)));
 }
