@@ -57,7 +57,7 @@ export function doAhbg(stopTurncount: number) {
         moodMinusCombat(expectedTurns(stopTurncount), 25);
       }
       setChoice(222, 1);
-      setChoice(208, getPropertyInt("minehobo_ahbgNcsUntilFlowers", 0) <= 0 ? 1 : 2);
+      setChoice(208, getPropertyInt("forko_ahbgNcsUntilFlowers", 0) <= 0 ? 1 : 2);
     } else {
       moodBaseline(expectedTurns(stopTurncount));
       primaryGoal = PrimaryGoal.NONE;
@@ -77,16 +77,16 @@ export function doAhbg(stopTurncount: number) {
 
     if (!lastWasCombat()) {
       if (lastChoice() === 208) {
-        if (getPropertyInt("minehobo_ahbgNcsUntilFlowers", 0) <= 0) {
-          setPropertyInt("minehobo_ahbgNcsUntilFlowers", 5);
+        if (getPropertyInt("forko_ahbgNcsUntilFlowers", 0) <= 0) {
+          setPropertyInt("forko_ahbgNcsUntilFlowers", 5);
         }
       } else if (lastChoice() === 204) {
         // Zombo!
         break;
       } else if (lastChoice() !== 220) {
         setPropertyInt(
-          "minehobo_ahbgNcsUntilFlowers",
-          getPropertyInt("minehobo_ahbgNcsUntilFlowers", 0) - 1
+          "forko_ahbgNcsUntilFlowers",
+          getPropertyInt("forko_ahbgNcsUntilFlowers", 0) - 1
         );
       } else if (lastChoice() === 221) {
         state.watched += 1;
@@ -101,12 +101,12 @@ export function doAhbg(stopTurncount: number) {
       `Flimflams: ${state.flimflams}`,
       `Chillier Night: ${state.watched + state.dances}`,
       `My dances: ${state.dances}`,
-      `Until flowers: ${getPropertyInt("minehobo_ahbgNcsUntilFlowers")}`
+      `Until flowers: ${getPropertyInt("forko_ahbgNcsUntilFlowers")}`
     );
   }
 
   if (getImageAhbg.forceUpdate() === 10) {
-    setPropertyInt("minehobo_ahbgNcsUntilFlowers", 0);
+    setPropertyInt("forko_ahbgNcsUntilFlowers", 0);
     print("At Zombo. AHBG complete!");
   }
 }

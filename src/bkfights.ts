@@ -7,6 +7,7 @@ import {
   getClanName,
   getCounters,
   handlingChoice,
+  Item,
   itemAmount,
   mallPrice,
   myAscensions,
@@ -22,6 +23,7 @@ import {
   useFamiliar,
   useSkill,
   visitUrl,
+  writeCcs,
 } from "kolmafia";
 import {
   $class,
@@ -47,7 +49,7 @@ import { setClan } from "./wl";
 export function withStash<T>(itemsToTake: Item[], action: () => T) {
   if (itemsToTake.every((item) => availableAmount(item) > 0)) return action();
 
-  const stashClanName = get<string>("stashClan");
+  const stashClanName = get("stashClan", "");
   if (stashClanName === "") return null;
 
   const startingClanName = getClanName();
@@ -67,12 +69,13 @@ export function withStash<T>(itemsToTake: Item[], action: () => T) {
     return action();
   } finally {
     for (const [item, quantityTaken] of quantitiesTaken.entries()) {
-      // eslint-disable-next-line no-unsafe-finally
-      if (getClanName() !== stashClanName)
-        throw "Wrong clan! Don't put stuff back in the stash here!";
-      retrieveItem(quantityTaken, item);
-      putStash(quantityTaken, item);
-      print(`Returned ${quantityTaken} ${item.plural} to stash.`, "blue");
+      if (getClanName() === stashClanName) {
+        retrieveItem(quantityTaken, item);
+        putStash(quantityTaken, item);
+        print(`Returned ${quantityTaken} ${item.plural} to stash.`, "blue");
+      } else {
+        print("Error: Wrong clan!!!", "red");
+      }
     }
     setClan(startingClanName);
   }
@@ -82,6 +85,7 @@ if (!have($effect`Steely-Eyed Squint`)) throw "Get Squint first!";
 // if (!have($effect`Eldritch Attunement`)) throw 'Get Eldritch Attunement first!';
 
 cliExecute("mood apathetic");
+writeCcs("[default]", "forko");
 cliExecute("ccs forko");
 if (
   get("sourceTerminalEducate1") !== "digitize.edu" ||
@@ -296,7 +300,9 @@ if (get("_powderedMadnessUses") < 5 && mallPrice($item`powdered madness`) < 4000
 // 25	1	0	0	Asdon Martin: Missile Launcher	combat skill	must have Asdon Martin installed in your workshed; instantly forces all items to drop; costs 100 "fuel"
 if (getCampground()["Asdon Martin keyfob"] !== undefined && !get("_missileLauncherUsed")) {
   fillAsdonMartinTo(100);
-  withMacro(Macro.tentacle().skill($skill`Missile Launcher`), () => use($item`drum machine`));
+  withMacro(Macro.tentacle().skill($skill`Asdon Martin: Missile Launcher`), () =>
+    use($item`drum machine`)
+  );
 }
 
 // 21	10	0	0	Partygoers from The Neverending Party	must have used a Neverending Party invitation envelope.

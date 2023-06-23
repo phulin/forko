@@ -25,6 +25,7 @@ build({
     pld: "./src/pld.ts",
     ahbg: "./src/ahbg.ts",
     townsquare: "./src/townsquare.ts",
+    eespading: "./src/eespading.ts",
   },
   bundle: true,
   minifySyntax: true,

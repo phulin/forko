@@ -5,9 +5,7 @@ import { getSewersState } from "./sewers";
 import { Clan } from "libram";
 
 function getClanCache(targetClanName: string | null = null) {
-  let clanCache = new Map<string, number>(
-    JSON.parse(getPropertyString("minehobo_clanCache", "[]"))
-  );
+  let clanCache = new Map<string, number>(JSON.parse(getPropertyString("forko_clanCache", "[]")));
   if (
     Object.keys(clanCache).length === 0 ||
     (targetClanName !== null && !clanCache.has(targetClanName))
@@ -19,7 +17,7 @@ function getClanCache(targetClanName: string | null = null) {
     const clanNames: string[] = xpath(recruiter, '//select[@name="whichclan"]/option/text()');
     clanCache = new Map<string, number>(zip(clanNames, clanIds) as [string, number][]);
   }
-  setProperty("minehobo_clanCache", JSON.stringify([...clanCache.entries()]));
+  setProperty("forko_clanCache", JSON.stringify([...clanCache.entries()]));
   return clanCache;
 }
 

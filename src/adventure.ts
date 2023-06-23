@@ -8,12 +8,13 @@ import {
   $locations,
   $skill,
   get,
+  have,
 } from "libram";
 import {
-  adv1,
   availableAmount,
   cliExecute,
   equippedAmount,
+  Familiar,
   getCampground,
   getCounters,
   getFuel,
@@ -22,11 +23,12 @@ import {
   haveFamiliar,
   haveSkill,
   inebrietyLimit,
+  Item,
   itemAmount,
+  Location,
   mallPrice,
   maximize,
   mpCost,
-  myAdventures,
   myAscensions,
   myBasestat,
   myFamiliar,
@@ -40,26 +42,25 @@ import {
   putCloset,
   restoreHp,
   restoreMp,
-  retrieveItem,
   reverseNumberology,
   setLocation,
   setProperty,
   shopAmount,
-  takeCloset,
+  Skill,
+  Stat,
   toInt,
   totalTurnsPlayed,
+  use,
   useFamiliar,
   visitUrl,
 } from "kolmafia";
 import {
   clamp,
-  getImagePld,
   getPropertyBoolean,
   getPropertyInt,
   getPropertyString,
   myFamiliarWeight,
   sausageMp,
-  setChoice,
   setPropertyInt,
   turboMode,
 } from "./lib";
@@ -75,9 +76,9 @@ function has(itemOrSkill: Item | Skill) {
 }
 
 export function maximizeCached(objective: string) {
-  const objectiveChanged = getPropertyString("minehobo_lastObjective", "") !== objective;
+  const objectiveChanged = getPropertyString("forko_lastObjective", "") !== objective;
 
-  let oldStats = getPropertyString("minehobo_lastStats", "0,0,0")
+  let oldStats = getPropertyString("forko_lastStats", "0,0,0")
     .split(",")
     .map((s: string) => parseInt(s, 10));
   if (oldStats.length !== 3) oldStats = [0, 0, 0];
@@ -87,15 +88,15 @@ export function maximizeCached(objective: string) {
     (newStat, i) => newStat > oldStats[i] && oldStats[i] < 300 && newStat % checkMod === 0
   );
 
-  const oldFamiliar = getPropertyString("minehobo_lastFamiliar", "");
+  const oldFamiliar = getPropertyString("forko_lastFamiliar", "");
   const familiarChanged = oldFamiliar !== myFamiliar().toString();
 
   if (!objectiveChanged && !statsChanged && !familiarChanged) return;
 
   if (maximize(objective, false)) {
-    setProperty("minehobo_lastObjective", objective);
-    setProperty("minehobo_lastStats", stats.join(","));
-    setProperty("minehobo_lastFamiliar", myFamiliar().toString());
+    setProperty("forko_lastObjective", objective);
+    setProperty("forko_lastStats", stats.join(","));
+    setProperty("forko_lastFamiliar", myFamiliar().toString());
   } else {
     throw "Maximize command failed.";
   }
@@ -106,10 +107,10 @@ function exclude(haystack: Item[], needles: Item[]) {
 }
 
 const freeRunSources: [string, number | boolean, Item | Skill][] = [
-  ["_reflexHammerUsed", 3, $item`Lil' Doctor™ bag`],
-  ["_kgbTranquilizerDartUses", 3, $item`Kremlin's Greatest Briefcase`],
-  ["_snokebombUsed", 3, $skill`Snokebomb`],
-  ["_mafiaMiddleFingerRingUsed", true, $item`mafia middle finger ring`],
+  // ["_reflexHammerUsed", 3, $item`Lil' Doctor™ bag`],
+  // ["_kgbTranquilizerDartUses", 3, $item`Kremlin's Greatest Briefcase`],
+  // ["_snokebombUsed", 3, $skill`Snokebomb`],
+  // ["_mafiaMiddleFingerRingUsed", true, $item`mafia middle finger ring`],
 ];
 const freeRunItems = $items`Louder Than Bomb, tattered scrap of paper, GOTO, green smoke bomb`;
 let freeRunFamiliar: Familiar | null = null;
@@ -117,7 +118,7 @@ for (const testFam of $familiars`Pair of Stomping Boots, Frumious Bandersnatch`)
   if (haveFamiliar(testFam)) freeRunFamiliar = testFam;
 }
 
-export const usualDropItems = $items`lucky gold ring, Mr. Cheeng's spectacles, mafia thumb ring, pantogram pants`;
+export const usualDropItems = []; // $items`lucky gold ring, Mr. Cheeng's spectacles, mafia thumb ring, pantogram pants`;
 const turnOnlyItems = $items`mafia thumb ring`;
 const fightOnlyItems = $items`lucky gold ring, Mr. Cheeng's spectacles, mafia thumb ring`;
 
@@ -140,10 +141,11 @@ function feedToMimic(amount: number, candy: Item) {
   visitUrl(`familiarbinger.php?action=binge&qty=${amount}&whichitem=${toInt(candy)}`);
 }
 
-const mimicFeedCandy = $items`Cold Hots candy, Daffy Taffy, Mr. Mediocrebar, Senior Mints, Wint-o-Fresh Mint`;
+const mimicFeedCandy = $items`Cold Hots candy, Daffy Taffy, Mr. Mediocrebar, Senior Mints, Wint-O-Fresh mint`;
 function maybeFeedMimic() {
   if (
-    getPropertyInt("minehobo_lastMimicFeedAscension", 0) < myAscensions() &&
+    have($familiar`Stocking Mimic`) &&
+    getPropertyInt("forko_lastMimicFeedAscension", 0) < myAscensions() &&
     $familiar`Stocking Mimic`.experience < 600
   ) {
     const totalCandy = mimicFeedCandy
@@ -155,7 +157,7 @@ function maybeFeedMimic() {
       feedToMimic(toFeed, candy);
       remainingCandyToFeed -= toFeed;
     }
-    setPropertyInt("minehobo_lastMimicFeedAscension", myAscensions());
+    setPropertyInt("forko_lastMimicFeedAscension", myAscensions());
   }
 }
 
@@ -245,6 +247,7 @@ export class AdventuringManager {
       forceEquip = [...exclude(forceEquip, [$item`hobo code binder`]), $item`Drunkula's wineglass`];
       auxiliaryGoals = [...auxiliaryGoals, "0.01 weapon damage"];
     } else if (
+      have($item`Kramco Sausage-o-Matic™`) &&
       getKramcoWandererChance() > 0.04 &&
       !forceEquip.includes($item`hobo code binder`) // AND probability is reasonably high.
     ) {
@@ -304,7 +307,7 @@ export class AdventuringManager {
   }
 
   setupFreeRuns() {
-    if (!getPropertyBoolean("_minehobo_freeRunFamiliarUsed", false) && freeRunFamiliar !== null) {
+    if (!getPropertyBoolean("_forko_freeRunFamiliarUsed", false) && freeRunFamiliar !== null) {
       useFamiliar(freeRunFamiliar);
       maximizeCached(
         renderObjective(
@@ -326,7 +329,7 @@ export class AdventuringManager {
         return;
       }
       // fall through if we've used all our familiar runs.
-      setProperty("_minehobo_freeRunFamiliarUsed", "true");
+      setProperty("_forko_freeRunFamiliarUsed", "true");
     }
 
     if (myInebriety() > inebrietyLimit()) {
@@ -351,6 +354,8 @@ export class AdventuringManager {
 
     if (myInebriety() === (myFamiliar() === $familiar`Stooper` ? 0 : 1) + inebrietyLimit()) {
       pickedFamiliar = $familiar`Stooper`;
+    } else {
+      pickedFamiliar = $familiar`Star Starfish`;
     }
 
     if (pickedFamiliar === null && this.willFreeRun) {
@@ -451,25 +456,26 @@ export class AdventuringManager {
   // Restore, maximize, pick familiar.
   preAdventure() {
     if (haveEffect($effect`Beaten Up`) > 0) {
-      throw "Got beaten up.";
+      // throw "Got beaten up.";
+      use($item`tiny house`);
     }
 
     setLocation(this.location);
 
-    if (
-      this.location !== $location`Hobopolis Town Square` &&
-      !this.willFreeRun &&
-      myInebriety() <= inebrietyLimit()
-    ) {
-      if (getPropertyInt("_chestXRayUsed") < 3) {
-        this.forceEquip = [...exclude(this.forceEquip, turnOnlyItems), $item`Lil' Doctor™ bag`];
-      } else if (!getPropertyBoolean("_firedJokestersGun")) {
-        this.forceEquip = [...exclude(this.forceEquip, turnOnlyItems), $item`The Jokester's gun`];
-      } else if (!getPropertyBoolean("_missileLauncherUsed")) {
-        this.forceEquip = exclude(this.forceEquip, turnOnlyItems);
-        fillAsdonMartinTo(100);
-      }
-    }
+    // if (
+    //   this.location !== $location`Hobopolis Town Square` &&
+    //   !this.willFreeRun &&
+    //   myInebriety() <= inebrietyLimit()
+    // ) {
+    //   if (getPropertyInt("_chestXRayUsed") < 3) {
+    //     this.forceEquip = [...exclude(this.forceEquip, turnOnlyItems), $item`Lil' Doctor™ bag`];
+    //   } else if (!getPropertyBoolean("_firedJokestersGun")) {
+    //     this.forceEquip = [...exclude(this.forceEquip, turnOnlyItems), $item`The Jokester's gun`];
+    //   } else if (!getPropertyBoolean("_missileLauncherUsed")) {
+    //     this.forceEquip = exclude(this.forceEquip, turnOnlyItems);
+    //     fillAsdonMartinTo(100);
+    //   }
+    // }
 
     maximizeCached(
       renderObjective(
@@ -501,21 +507,6 @@ export class AdventuringManager {
       for (const item of $items`hobo nickel, sand dollar`) {
         putCloset(itemAmount(item), item);
       }
-    }
-
-    // TODO: Check SR.
-    if (
-      this.location !== $location`The Purple Light District` &&
-      getImagePld() === 10 &&
-      inSemirareWindow() &&
-      AdventuringManager.lastSemirareCheck < myTurncount()
-    ) {
-      setChoice(205, 2);
-      setChoice(294, 1);
-      takeCloset(100, $item`hobo nickel`);
-      adv1($location`The Purple Light District`, -1, "");
-      putCloset(itemAmount($item`hobo nickel`), $item`hobo nickel`);
-      AdventuringManager.lastSemirareCheck = myTurncount();
     }
 
     while (

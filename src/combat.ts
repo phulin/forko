@@ -1,91 +1,40 @@
 import {
   adv1,
+  canAdventure,
   choiceFollowsFight,
-  getCampground,
-  getCounters,
-  getFuel,
-  getProperty,
-  haveEffect,
-  haveEquipped,
-  haveFamiliar,
-  haveSkill,
+  currentRound,
+  getAutoAttack,
+  handlingChoice,
   inebrietyLimit,
   inMultiFight,
-  itemAmount,
+  lastChoice,
+  Location,
+  Monster,
   myFamiliar,
   myInebriety,
-  myMp,
-  numericModifier,
+  myLevel,
+  myTurncount,
   print,
-  runaway,
+  runChoice,
   runCombat,
-  setProperty,
-  toInt,
+  setAutoAttack,
+  setCcs,
+  toUrl,
   useSkill,
   visitUrl,
+  writeCcs,
 } from "kolmafia";
-import { $effect, $familiar, $item, $items, $monster, $skill, Macro as LibramMacro } from "libram";
-import {
-  getPropertyBoolean,
-  getPropertyInt,
-  myFamiliarWeight,
-  setPropertyInt,
-  turboMode,
-} from "./lib";
+import { $effect, $familiar, $item, $skill, get, have, Macro as LibramMacro } from "libram";
+import { turboMode } from "./lib";
 
-// multiFight() stolen from Aenimus: https://github.com/Aenimus/aen_cocoabo_farm/blob/master/scripts/aen_combat.ash.
-// Thanks! Licensed under MIT license.
-function multiFight() {
-  while (inMultiFight()) runCombat();
-  if (choiceFollowsFight()) visitUrl("choice.php");
-}
-
-function candyblastDamage() {
-  const spellDamagePercent = numericModifier("spell damage percent");
-  const multiplier = (100 + spellDamagePercent) / 100;
-  return Math.ceil(multiplier * 48);
+export function canStasis(): boolean {
+  return !have($effect`Eldritch Attunement`) && myLevel() >= 40;
 }
 
 export class Macro extends LibramMacro {
   submit() {
     print(`Submitting macro: ${this.toString()}`);
     return super.submit();
-  }
-
-  collect() {
-    const maxMimicDamage =
-      myFamiliar() === $familiar`Stocking Mimic` ? 2 * (myFamiliarWeight() + 3) : 0;
-    const maxDamage = 2 * candyblastDamage() + maxMimicDamage;
-    return this.externalIf(!turboMode(), Macro.if_("!hpbelow 500", Macro.skill($skill`Extract`)))
-      .externalIf(
-        myFamiliar() === $familiar`Space Jellyfish`,
-        Macro.if_(
-          `!hpbelow 500 && (monsterid ${toInt($monster`stench hobo`)} || monsterid ${toInt(
-            $monster`sleaze hobo`
-          )})`,
-          Macro.skill($skill`Extract Jelly`)
-        )
-      )
-      .externalIf(
-        getPropertyInt("_sourceTerminalDigitizeMonsterCount") >= 7 &&
-          getPropertyInt("_sourceTerminalDigitizeUses") < 3 &&
-          getCounters("Digitize Monster", 0, 0) !== "",
-        Macro.if_(
-          `monstername ${getProperty("_sourceTerminalDigitizeMonster")}`,
-          Macro.skill($skill`Digitize`)
-        )
-      )
-      .externalIf(
-        !turboMode(),
-        Macro.while_(
-          `!monstername normal hobo && !hpbelow 500 && monsterhpabove ${maxDamage} && !match "some of it is even intact"`,
-          Macro.skill($skill`Candyblast`)
-        )
-      );
-  }
-
-  static collect() {
-    return new Macro().collect();
   }
 
   stasis() {
@@ -98,15 +47,9 @@ export class Macro extends LibramMacro {
         )
       )
       .externalIf(!turboMode(), Macro.skill($skill`Entangling Noodles`))
-      .collect()
       .externalIf(
         myFamiliar() === $familiar`Stocking Mimic`,
-        Macro.while_(
-          `!pastround 9 && !hpbelow 500 && (!monstername "normal hobo" || monsterhpabove ${
-            2 * myFamiliarWeight()
-          })`,
-          Macro.item($item`seal tooth`)
-        )
+        Macro.while_(`!pastround 9 && !hpbelow 500`, Macro.item($item`seal tooth`))
       );
   }
 
@@ -120,68 +63,9 @@ export class Macro extends LibramMacro {
 
   kill() {
     return this.externalIf(myInebriety() > inebrietyLimit(), "attack")
-      .if_("monstername sleaze hobo", Macro.skill($skill`Saucegeyser`).repeat())
-      .externalIf(
-        getPropertyInt("_shatteringPunchUsed") < 3,
-        Macro.if_(Macro.nonFree(), Macro.skill($skill`Shattering Punch`))
-      )
-      .externalIf(
-        !getPropertyBoolean("_gingerbreadMobHitUsed"),
-        Macro.if_(Macro.nonFree(), Macro.skill($skill`Gingerbread Mob Hit`))
-      )
-      .externalIf(
-        getPropertyInt("_chestXRayUsed") < 3 && haveEquipped($item`Lil' Doctor™ bag`),
-        Macro.if_(Macro.nonFree(), Macro.skill($skill`Chest X-Ray`))
-      )
-      .externalIf(
-        !getPropertyBoolean("_firedJokestersGun") && haveEquipped($item`The Jokester's gun`),
-        Macro.if_(Macro.nonFree(), Macro.skill($skill`Fire the Jokester's Gun`))
-      )
-      .externalIf(
-        !getPropertyBoolean("_missileLauncherUsed") &&
-          getCampground()["Asdon Martin keyfob"] !== undefined &&
-          getFuel() >= 100,
-        Macro.if_(Macro.nonFree(), Macro.skill($skill`Asdon Martin: Missile Launcher`))
-      )
-      .externalIf(
-        !turboMode(),
-        Macro.while_(
-          '!hpbelow 500 && !match "some of it is even intact"',
-          Macro.skill($skill`Candyblast`)
-        )
-      )
-      .skill($skill`Lunging Thrust-Smack`)
-      .skill($skill`Lunging Thrust-Smack`)
-      .if_("monstername spooky hobo", Macro.skill($skill`Lunging Thrust-Smack`).repeat())
       .skill($skill`Stuffed Mortar Shell`)
-      .skill($skill`Saucegeyser`)
-      .attack()
+      .skill($skill`Cannelloni Cannon`)
       .repeat();
-  }
-
-  static kill() {
-    return new Macro().kill();
-  }
-
-  static freeRun() {
-    return new Macro()
-      .skill($skill`Extract`)
-      .skill($skill`Extract Jelly`)
-      .externalIf(
-        (haveFamiliar($familiar`Frumious Bandersnatch`) &&
-          haveEffect($effect`The Ode to Booze`) > 0) ||
-          haveFamiliar($familiar`Pair of Stomping Boots`),
-        "runaway"
-      )
-      .trySkill(
-        "Spring-Loaded Front Bumper",
-        "Reflex Hammer",
-        "KGB tranquilizer dart",
-        "Throw Latte on Opponent",
-        "Snokebomb"
-      )
-      .tryItem("Louder Than Bomb", "tattered scrap of paper", "GOTO", "green smoke bomb")
-      .abort();
   }
 
   spellKill() {
@@ -214,153 +98,117 @@ export class Macro extends LibramMacro {
   }
 }
 
-export const MODE_NULL = "";
-export const MODE_MACRO = "macro";
-export const MODE_FIND_MONSTER_THEN = "findthen";
-export const MODE_RUN_UNLESS_FREE = "rununlessfree";
-type CombatMode = "" | "macro" | "findthen" | "rununlessfree";
-
-export function setMode(mode: CombatMode, arg1: string | null = null, arg2: string | null = null) {
-  setProperty("minehobo_combatMode", mode);
-  if (arg1 !== null) setProperty("minehobo_combatArg1", arg1);
-  if (arg2 !== null) setProperty("minehobo_combatArg2", arg2);
-}
-
-export function getMode() {
-  return getProperty("minehobo_combatMode");
-}
-
-export function getArg1() {
-  return getProperty("minehobo_combatArg1");
-}
-
-export function getArg2() {
-  return getProperty("minehobo_combatArg2");
-}
-
-const freeRunItems = $items`Louder Than Bomb, divine champagne popper, tattered scrap of paper, GOTO, green smoke bomb`;
-export function main(initialRound: number, foe: Monster) {
-  const mode = getMode();
-  if (mode === MODE_MACRO) {
-    Macro.load().submit();
-  } else if (mode === MODE_RUN_UNLESS_FREE) {
-    const preMacro = new Macro().step(getArg1());
-    const killMacro = new Macro().step(getArg2());
-    if (foe.attributes.includes("FREE")) {
-      killMacro.submit();
-    } else {
-      if (preMacro.toString().length > 0) preMacro.submit();
-      if (
-        myFamiliar() === Familiar.get("Frumious Bandersnatch") &&
-        haveEffect(Effect.get("Ode to Booze")) > 0 &&
-        getPropertyInt("_banderRunaways") < myFamiliarWeight() / 5
-      ) {
-        const banderRunaways = getPropertyInt("_banderRunaways");
-        runaway();
-        if (getPropertyInt("_banderRunaways") === banderRunaways) {
-          print("WARNING: Mafia is not tracking bander runaways correctly.");
-          setPropertyInt("_banderRunaways", banderRunaways + 1);
-        }
-      } else if (haveSkill(Skill.get("Spring-Loaded Front Bumper"))) {
-        useSkill(1, Skill.get("Spring-Loaded Front Bumper"));
-      } else if (haveSkill(Skill.get("Reflex Hammer")) && getPropertyInt("_reflexHammerUsed") < 3) {
-        useSkill(1, Skill.get("Reflex Hammer"));
-      } else if (
-        haveSkill(Skill.get("KGB tranquilizer dart")) &&
-        getPropertyInt("_kgbTranquilizerDartUses") < 3
-      ) {
-        useSkill(1, Skill.get("KGB tranquilizer dart"));
-      } else if (
-        haveSkill(Skill.get("Show them your ring")) &&
-        !getPropertyBoolean("_mafiaMiddleFingerRingUsed")
-      ) {
-        useSkill(1, Skill.get("Show them your ring"));
-      } else if (
-        myMp() >= 50 &&
-        haveSkill(Skill.get("Snokebomb")) &&
-        getPropertyInt("_snokebombUsed") < 3
-      ) {
-        useSkill(1, Skill.get("Snokebomb"));
-      } else if (freeRunItems.some((item: Item) => itemAmount(item) > 0)) {
-        Macro.item(freeRunItems.find((item: Item) => itemAmount(item) > 0) as Item)
-          .repeat()
-          .submit();
-      } else {
-        // non-free, whatever
-        throw "Couldn't find a way to run away for free!";
-      }
-    }
-  } else {
-    throw "Unrecognized mode.";
-  }
-}
-
-export function withMode<T>(
-  action: () => T,
-  mode: CombatMode,
-  arg1: string | null = null,
-  arg2: string | null = null
-) {
-  setMode(mode, arg1, arg2);
+export function withMacro<T>(macro: Macro, action: () => T): T {
+  if (getAutoAttack() > 0) setAutoAttack(0);
+  makeCcs(macro);
   try {
     return action();
   } finally {
-    multiFight();
-    setMode(MODE_NULL);
+    makeCcs(Macro.abort());
   }
 }
 
-export function withMacro<T>(macro: Macro, action: () => T) {
-  try {
-    macro.save();
-    return withMode(action, MODE_MACRO);
-  } finally {
-    Macro.clearSaved();
-  }
+export function mapMonster(
+  location: Location,
+  monster: Monster | Monster[],
+  macro: Macro
+): boolean {
+  return withMacro(macro, () => {
+    if (!have($skill`Map the Monsters`)) return false;
+    if (get("_monstersMapped") >= 3) return false;
+    if (!canAdventure(location)) return false;
+
+    useSkill($skill`Map the Monsters`);
+    if (!get("mappingMonsters")) return false;
+
+    const monsterArray = Array.isArray(monster) ? monster : [monster];
+
+    const turns = myTurncount();
+    while (currentRound() < 1) {
+      // Not in combat
+      if (myTurncount() > turns) {
+        throw new Error("Map the Monsters unsuccessful?");
+      }
+      const page = visitUrl(toUrl(location));
+      if (handlingChoice() && lastChoice() === 1435) {
+        const chosenMonster = monsterArray.find((m) => page.includes(m.name));
+        if (!chosenMonster) {
+          throw new Error("Couldn't find any of the supplied monsters while mapping the monsters");
+        }
+        runChoice(1, `heyscriptswhatsupwinkwink=${chosenMonster.id}`);
+        return true;
+      } else {
+        runChoice(-1, false);
+      }
+    }
+    runCombat();
+    while (inMultiFight()) runCombat();
+    if (choiceFollowsFight()) visitUrl("choice.php");
+    return false;
+  });
 }
 
-export function adventureMode(
-  loc: Location,
-  mode: CombatMode,
-  arg1: string | null = null,
-  arg2: string | null = null
-) {
-  return withMode(
-    () => {
-      adv1(loc, -1, "");
-    },
-    mode,
-    arg1,
-    arg2
-  );
+export function makeCcs(macro: Macro): void {
+  // print(`writing ccs [default]\n${macro.toString()}`);
+  writeCcs(`[default]\n"${macro.toString()}"`, "forko");
+  setCcs("forko");
 }
 
-export function adventureRunUnlessFree(loc: Location, preMacro: Macro, killMacro: Macro) {
-  adventureMode(loc, MODE_RUN_UNLESS_FREE, preMacro.toString(), killMacro.toString());
-}
-
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function adventureRunOrStasis(loc: Location, freeRun: boolean) {
-  if (freeRun) {
-    adventureRunUnlessFree(
-      loc,
-      myFamiliar() === $familiar`Stocking Mimic` ? Macro.stasis() : Macro.collect(),
-      Macro.stasis().kill()
-    );
-  } else {
-    adventureMacro(loc, Macro.stasis().kill());
+  adventureMacro(loc, Macro.stasis().kill());
+}
+
+/**
+ * Adventure in a location and handle all combats with a given macro.
+ * To use this function you will need to create a consult script that runs Macro.load().submit() and a CCS that calls that consult script.
+ * See examples/consult.ts for an example.
+ *
+ * @category Combat
+ * @param loc Location to adventure in.
+ * @param macro Macro to execute.
+ */
+export function adventureMacro(loc: Location, macro: Macro): void {
+  // if (getAutoAttack() !== 0) setAutoAttack(0);
+  makeCcs(macro);
+  try {
+    adv1(loc, 0, "");
+    while (inMultiFight()) runCombat();
+    if (choiceFollowsFight()) visitUrl("choice.php");
+  } catch (e) {
+    throw `Combat exception! Last macro error: ${get("lastMacroError")}. Exception ${e}.`;
+  } finally {
+    // makeCcs(Macro.abort());
   }
 }
 
-export function adventureMacro(loc: Location, macro: Macro) {
-  withMode(() => withMacro(macro, () => adv1(loc, -1, "")), MODE_MACRO);
-}
-
+/**
+ * Adventure in a location and handle all combats with a given autoattack and manual macro.
+ * To use the nextMacro parameter you will need to create a consult script that runs Macro.load().submit() and a CCS that calls that consult script.
+ * See examples/consult.ts for an example.
+ *
+ * @category Combat
+ * @param loc Location to adventure in.
+ * @param autoMacro Macro to execute via KoL autoattack.
+ * @param nextMacro Macro to execute manually after autoattack completes.
+ */
 export function adventureMacroAuto(
   loc: Location,
   autoMacro: Macro,
-  nextMacro: Macro | null = null
-) {
-  nextMacro = nextMacro ?? Macro.abort();
+  nextMacro = Macro.abort()
+): void {
+  // printHtml(autoMacro.components.join("<br />"));
+  // print("=>");
+  // printHtml(nextMacro.components.join("<br />"));
   autoMacro.setAutoAttack();
-  adventureMacro(loc, nextMacro);
+  makeCcs(nextMacro);
+  try {
+    adv1(loc, 0, "");
+    while (inMultiFight()) runCombat();
+    if (choiceFollowsFight()) visitUrl("choice.php");
+  } catch (e) {
+    throw `Combat exception! Last macro error: ${get("lastMacroError")}. Exception ${e}.`;
+  } finally {
+    // makeCcs(Macro.abort());
+  }
 }

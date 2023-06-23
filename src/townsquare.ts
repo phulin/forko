@@ -2,6 +2,7 @@ import {
   abort,
   ceil,
   cliExecute,
+  Effect,
   haveEffect,
   inebrietyLimit,
   myBuffedstat,
@@ -26,6 +27,8 @@ import {
   wrapMain,
 } from "./lib";
 import { ensureEffect, expectedTurns, moodBaseline } from "./mood";
+
+const DESIRED_HOBOS = 500;
 
 enum PartType {
   HOT,
@@ -134,7 +137,11 @@ function getParts(part: MonsterPart, desiredParts: number, stopTurncount: number
     );
     manager.preAdventure();
 
-    if ([PartType.COLD, PartType.STENCH, PartType.SPOOKY, PartType.SLEAZE].includes(part.type)) {
+    if (
+      [PartType.HOT, PartType.COLD, PartType.STENCH, PartType.SPOOKY, PartType.SLEAZE].includes(
+        part.type
+      )
+    ) {
       const predictedDamage =
         (32 + 0.5 * myBuffedstat($stat`Mysticality`)) *
         (1 + numericModifier("spell damage percent") / 100);
@@ -150,14 +157,11 @@ function getParts(part: MonsterPart, desiredParts: number, stopTurncount: number
         .externalIf(!turboMode(), Macro.skill($skill`Cannelloni Cannon`).repeat())
         .item($item`seal tooth`)
         .setAutoAttack();
-    } else if (part.type === PartType.HOT) {
-      Macro.stasis()
-        .skill($skill`Saucegeyser`)
-        .repeat()
-        .setAutoAttack();
     } else if (part.type === PartType.PHYSICAL) {
       Macro.stasis()
-        .skill($skill`Lunging Thrust-Smack`)
+        .skill($skill`Spaghetti Spear`)
+        .item($item`New Age healing crystal`)
+        .item($item`New Age hurting crystal`)
         .repeat()
         .setAutoAttack();
     }
@@ -184,9 +188,10 @@ export function doTownsquare(stopTurncount: number) {
   visitUrl("clan_hobopolis.php?preaction=simulacrum&place=3&qty=1&makeall=1");
 
   const image = getImage($location`Hobopolis Town Square`);
-  if (image < 11 && myInebriety() <= inebrietyLimit()) {
+  const desiredImage = Math.floor(DESIRED_HOBOS / 100);
+  if (image < desiredImage && myInebriety() <= inebrietyLimit()) {
     // Assume we're at the end of our current image and estimate. This will be conservative.
-    const imagesRemaining = 11 - image;
+    const imagesRemaining = desiredImage - image;
     let hobosRemaining = (imagesRemaining - 1) * 100;
     // Make a plan: how many total scarehobos do we need to make to kill that many?
     // Start with the part with the fewest (should be 0).
@@ -233,7 +238,7 @@ export function doTownsquare(stopTurncount: number) {
   }
   print("Close to goal; using 1-by-1 strategy.");
 
-  while (!pldAccessible() && !mustStop(stopTurncount)) {
+  while (getImage($location`Hobopolis Town Square`) < desiredImage && !mustStop(stopTurncount)) {
     if (myInebriety() <= inebrietyLimit()) {
       for (const part of allParts.values()) {
         getParts(part, 1, stopTurncount);
@@ -241,13 +246,15 @@ export function doTownsquare(stopTurncount: number) {
       print("Making available scarehobos.");
       visitUrl("clan_hobopolis.php?preaction=simulacrum&place=3&qty=1&makeall=1");
     } else {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const physical = allParts.get(PartType.PHYSICAL)!;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       getParts(physical, currentParts().get(physical)! + 1, stopTurncount);
     }
     currentParts.forceUpdate();
   }
-  if (pldAccessible()) {
-    print("PLD accessible. Done with town square.");
+  if (getImage($location`Hobopolis Town Square`) === 5) {
+    print("EE accessible. Done with town square.");
   } else if (mustStop(stopTurncount)) {
     print("Out of adventures.");
   }

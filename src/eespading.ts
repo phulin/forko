@@ -1,15 +1,15 @@
 import {
   abort,
+  cliExecute,
   getClanId,
   getProperty,
   lastChoice,
   myAscensions,
-  myTurncount,
   print,
   setProperty,
   visitUrl,
 } from "kolmafia";
-import { $location } from "libram";
+import { $location, $skill } from "libram";
 import { AdventuringManager, PrimaryGoal, usualDropItems } from "./adventure";
 import { adventureMacroAuto, Macro } from "./combat";
 import {
@@ -36,10 +36,6 @@ function clanYodelAscensions() {
     result.set(parseInt(subcomponents[0], 10), parseInt(subcomponents[1], 10));
   }
   return result;
-}
-
-function yodeledThisAscension() {
-  return clanYodelAscensions().get(getClanId()) === myAscensions();
 }
 
 export function recordYodel() {
@@ -88,21 +84,12 @@ export function getState(checkImage = true) {
   return state;
 }
 
-export const ICICLE_COUNT = 85;
+export const ICICLE_COUNT = 10;
 export const DIVERT_COUNT = 16;
-export function doEe(stopTurncount: number, pass: number) {
+export function doEe(stopTurncount: number) {
+  let desiredImage = 10;
   let state = getState(true);
-  let yodeled = yodeledThisAscension();
-  if (
-    ((pass === 1 &&
-      (state.icicles < ICICLE_COUNT || state.diverts + state.flimflams < DIVERT_COUNT) &&
-      !yodeled) ||
-      (pass === 2 && !yodeled) ||
-      (pass === 3 && state.image >= 9) ||
-      pass === 4) &&
-    state.image < 10 &&
-    !mustStop(stopTurncount)
-  ) {
+  if (state.image < desiredImage && !mustStop(stopTurncount)) {
     setChoice(202, 2); // Run away from Frosty.
     setChoice(273, 1); // Get frozen banquet
     setChoice(215, 3); // Make icicles
@@ -112,31 +99,17 @@ export function doEe(stopTurncount: number, pass: number) {
     // First pass: Go until we get to icicle + diverts.
     // Second pass: Go until yodeling.
     // Third pass: Go until done, unless image < 9.
-    while (
-      ((pass === 1 &&
-        (state.icicles < ICICLE_COUNT || state.diverts + state.flimflams < DIVERT_COUNT) &&
-        !yodeled) ||
-        (pass === 2 && !yodeled) ||
-        (pass === 3 && state.image >= 9) ||
-        pass === 4) &&
-      !mustStop(stopTurncount)
-    ) {
-      if (
-        state.icicles >= ICICLE_COUNT &&
-        (state.diverts >= DIVERT_COUNT || state.flimflams + state.diverts >= 21)
-      ) {
-        // We've done enough BB that making icicles lets us skip an adventure to find yodeling.
-        setChoice(215, 3);
-      } else {
-        // Make icicles or, if we're done, divert.
-        setChoice(215, state.icicles >= ICICLE_COUNT ? 2 : 3);
+    while (state.image < desiredImage && !mustStop(stopTurncount)) {
+      if (state.icicles >= ICICLE_COUNT && desiredImage === 10) {
+        desiredImage = state.image + 1;
+        print(`Got to the right number of icicles. Going to image ${desiredImage}.`, "blue");
       }
-      // Yodel heart out if we're done with icicles.
-      setChoice(217, state.icicles >= ICICLE_COUNT ? 3 : 1);
 
-      const needMinusCombat =
-        !yodeled || state.icicles < ICICLE_COUNT || state.flimflams + state.diverts < 21;
-      const estimatedTurns = 2 * (ICICLE_COUNT - state.icicles) + state.image * 10;
+      // Make icicles or, if we're done, divert.
+      setChoice(215, state.icicles >= ICICLE_COUNT ? 2 : 3);
+
+      const needMinusCombat = state.icicles < ICICLE_COUNT;
+      const estimatedTurns = 50;
       if (needMinusCombat) {
         moodMinusCombat(expectedTurns(stopTurncount), clamp(estimatedTurns, 0, 300));
       } else {
@@ -149,32 +122,33 @@ export function doEe(stopTurncount: number, pass: number) {
         usualDropItems
       );
       manager.preAdventure();
-      adventureMacroAuto($location`Exposure Esplanade`, Macro.stasis().kill());
+      adventureMacroAuto(
+        $location`Exposure Esplanade`,
+        // CLEESH monsters until we get to the icicle count.
+        Macro.externalIf(state.icicles < ICICLE_COUNT, Macro.skill($skill`CLEESH`))
+          .stasis()
+          .kill()
+      );
 
       if (!lastWasCombat()) {
         if (lastChoice() === 202) {
           break;
-        } else if (lastChoice() === 215 && getChoice(215) === 3 && pass === 1) {
+        } else if (lastChoice() === 215 && getChoice(215) === 3) {
           state.icicles += 1;
         } else if (lastChoice() === 215 && getChoice(215) === 2) {
           state.diverts += 1;
-        } else if (lastChoice() === 217 && state.icicles >= ICICLE_COUNT) {
-          recordYodel();
-          yodeled = true;
         }
       }
-      if (myTurncount() % 10 === 0) {
-        state = getState();
-      } else {
-        state.image = getImageEe();
-      }
+      state = getState(true);
       printState(state);
     }
 
-    if (getImage($location`Exposure Esplanade`) === 10) {
-      print("At Frosty. Stopping!");
-    } else if (getImage($location`Burnbarrel Blvd.`) < 8) {
-      print("Stopping EE. Go do BB.");
+    if (!lastWasCombat() && lastChoice() === 217) {
+      print(`YODELED ${getChoice(217)}`, "blue");
+    }
+
+    if (getImage($location`Exposure Esplanade`) === desiredImage) {
+      print(`At image ${desiredImage}. Stopping!`);
     } else {
       print("Done with EE for now.");
     }
@@ -182,5 +156,12 @@ export function doEe(stopTurncount: number, pass: number) {
 }
 
 export function main(args: string) {
-  wrapMain(args, () => doEe(stopAt(args), 4));
+  wrapMain(args, () => {
+    try {
+      cliExecute("debug on");
+      doEe(stopAt(args));
+    } finally {
+      cliExecute("debug off");
+    }
+  });
 }

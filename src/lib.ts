@@ -5,11 +5,14 @@ import {
   cliExecute,
   closetAmount,
   eat,
+  Familiar,
   familiarWeight,
   formatDateTime,
   getProperty,
   haveEffect,
+  Item,
   itemAmount,
+  Location,
   logprint,
   mallPrice,
   myAdventures,
@@ -36,8 +39,18 @@ import {
   wait,
   weightAdjustment,
 } from "kolmafia";
-import { $class, $effect, $item, $items, $location, $skill, $thrall, get } from "libram";
-import { getSewersState, throughSewers } from "./sewers";
+import {
+  $class,
+  $effect,
+  $item,
+  $items,
+  $location,
+  $skill,
+  $thrall,
+  get,
+  SourceTerminal,
+} from "libram";
+import { throughSewers } from "./sewers";
 
 export function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(n, max));
@@ -273,10 +286,10 @@ export function wrapMain(args = "", action: () => void) {
     ensureJingle();
     cliExecute("counters nowarn Fortune Cookie");
     cliExecute("mood apathetic");
-    cliExecute("ccs forko");
     if (
-      get("sourceTerminalEducate1") !== "digitize.edu" ||
-      get("sourceTerminalEducate2") !== "extract.edu"
+      SourceTerminal.have() &&
+      (get("sourceTerminalEducate1") !== "digitize.edu" ||
+        get("sourceTerminalEducate2") !== "extract.edu")
     ) {
       cliExecute("terminal educate digitize; terminal educate extract");
     }
@@ -287,9 +300,9 @@ export function wrapMain(args = "", action: () => void) {
     print("Done mining.");
   } finally {
     setAutoAttack(0);
-    setProperty("minehobo_lastObjective", "");
-    setProperty("minehobo_lastStats", "");
-    setProperty("minehobo_lastFamiliar", "");
+    setProperty("forko_lastObjective", "");
+    setProperty("forko_lastStats", "");
+    setProperty("forko_lastFamiliar", "");
     unclosetNickels();
     if (throughSewers()) recordInstanceState();
   }
