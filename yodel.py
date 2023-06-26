@@ -6,18 +6,25 @@ import sys
 def print_image(s, n):
     print('{}\t{}'.format(s, n))
 
-encounter_re = r'\[[0-9]+\] Exposure Esplanade'
+encounter_re = r'\[([0-9]+)\] Exposure Esplanade'
 
 def process(filename):
     text = open(filename).read()
     blocks = text.split('\n\n')
     for i, block in enumerate(blocks):
-        if not re.match(encounter_re, block): continue
+        match = re.match(encounter_re, block)
+        if not match: continue
+        turn = int(match.group(1))
         lines = [line for line in block.splitlines() if not line.startswith("Preference")]
         encounter_line = lines[1].strip()
         assert encounter_line.startswith('Encounter: ')
         encounter = encounter_line[len('Encounter: '):]
 
+        next_match = next((re.match(encounter_re, b) for b in blocks[i + 1:] if re.match(encounter_re, b)), None)
+        if next_match is not None:
+            next_turn = int(next_match.group(1))
+            if encounter == 'Piping Cold' and turn == next_turn: continue
+        
         image = ''
         next_block = ''
         consolidated = block
@@ -55,10 +62,14 @@ def process(filename):
         elif encounter == 'Bumpity Bump Bump':
             print_image('done', 500)
             break
-        elif 'wins the fight' in consolidated.lower() and not 'cleesh' in consolidated.lower() and not 'sausage goblin' in consolidated.lower(): # hobo
-            print_image('hobo', image)
-        else:
-            pass
+        elif not 'cleesh' in consolidated.lower() and not 'sausage goblin' in consolidated.lower(): # hobo
+            if 'wins the fight' in consolidated.lower():
+                print_image('hobo', image)
+            for _ in range(consolidated.count("cried out and knocked an icicle")):
+                print("cries out")
+            if not "cried out and knocked an icicle" in consolidated:
+                for _ in re.findall(r'You lose (2[5-9][0-9]|[34][0-9][0-9]) hit points', consolidated):
+                    print("cries out")
 
 print('Processing', sys.argv[1:])
 

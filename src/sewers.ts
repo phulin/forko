@@ -58,9 +58,9 @@ export function doSewers(stopTurncount: number) {
     // Gnaw through bars
     setChoice(211, 1);
     setChoice(212, 1);
-    setChoice(197, 3); // Turn valve
-    setChoice(198, 3); // Open grate
-    setChoice(199, 2); // Ladder - skip.
+    setChoice(197, 1); // take tunnel // Turn valve
+    setChoice(198, 1); // take tunnel // Open grate
+    setChoice(199, 1); // take tunnel // Ladder - skip.
 
     setAutoAttack(0);
 
@@ -81,7 +81,7 @@ export function doSewers(stopTurncount: number) {
         [],
         equips
       );
-      manager.setupFreeRuns();
+      // manager.setupFreeRuns();
       manager.preAdventure();
       if (!manager.willFreeRun) moodAddItem();
       adventureRunOrStasis(location, manager.willFreeRun);

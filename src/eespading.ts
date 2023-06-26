@@ -6,12 +6,14 @@ import {
   lastChoice,
   myAscensions,
   print,
+  runTurn,
   setProperty,
+  toUrl,
   visitUrl,
 } from "kolmafia";
-import { $location, $skill } from "libram";
+import { $item, $location, $skill } from "libram";
 import { AdventuringManager, PrimaryGoal, usualDropItems } from "./adventure";
-import { adventureMacroAuto, Macro } from "./combat";
+import { Macro } from "./combat";
 import {
   clamp,
   extractInt,
@@ -54,6 +56,7 @@ class EEState {
   icicles = 0;
   diverts = 0;
   flimflams = 0;
+  yodels = 0;
 }
 
 export function printState(state: EEState) {
@@ -81,6 +84,8 @@ export function getState(checkImage = true) {
   state.diverts = extractInt(divertRe, logText);
   const flimflamRe = /flimflammed some hobos \(([0-9]+) turn/g;
   state.flimflams = extractInt(flimflamRe, logText);
+  const yodelRe = /yodeled like crazy \(([0-9]+) turn/g;
+  state.yodels = extractInt(yodelRe, logText);
   return state;
 }
 
@@ -93,22 +98,22 @@ export function doEe(stopTurncount: number) {
     setChoice(202, 2); // Run away from Frosty.
     setChoice(273, 1); // Get frozen banquet
     setChoice(215, 3); // Make icicles
-    setChoice(217, 1); // Yodel a little
+    setChoice(217, 0); // Yodel: break
     setChoice(292, 2); // Reject SR
 
     // First pass: Go until we get to icicle + diverts.
     // Second pass: Go until yodeling.
     // Third pass: Go until done, unless image < 9.
     while (state.image < desiredImage && !mustStop(stopTurncount)) {
-      if (state.icicles >= ICICLE_COUNT && desiredImage === 10) {
+      if (state.yodels > 0 && desiredImage === 10) {
         desiredImage = state.image + 1;
         print(`Got to the right number of icicles. Going to image ${desiredImage}.`, "blue");
       }
 
       // Make icicles or, if we're done, divert.
-      setChoice(215, state.icicles >= ICICLE_COUNT ? 2 : 3);
+      setChoice(215, state.yodels > 0 ? 2 : 2);
 
-      const needMinusCombat = state.icicles < ICICLE_COUNT;
+      const needMinusCombat = state.yodels === 0;
       const estimatedTurns = 50;
       if (needMinusCombat) {
         moodMinusCombat(expectedTurns(stopTurncount), clamp(estimatedTurns, 0, 300));
@@ -117,18 +122,22 @@ export function doEe(stopTurncount: number) {
       }
       const manager = new AdventuringManager(
         $location`Exposure Esplanade`,
-        needMinusCombat ? PrimaryGoal.MINUS_COMBAT : PrimaryGoal.NONE,
-        needMinusCombat ? [] : ["familiar weight"],
+        needMinusCombat ? PrimaryGoal.MINUS_COMBAT : PrimaryGoal.PLUS_COMBAT,
+        needMinusCombat ? [] : ["familiar weight", "-equip mushroom badge"],
         usualDropItems
       );
       manager.preAdventure();
-      adventureMacroAuto(
-        $location`Exposure Esplanade`,
-        // CLEESH monsters until we get to the icicle count.
-        Macro.externalIf(state.icicles < ICICLE_COUNT, Macro.skill($skill`CLEESH`))
-          .stasis()
-          .kill()
-      );
+
+      // CLEESH monsters until we get to the icicle count.
+      Macro.externalIf(state.yodels === 0, Macro.skill($skill`CLEESH`))
+        .skill($skill`Stuffed Mortar Shell`)
+        .item($item`seal tooth`)
+        .setAutoAttack();
+      const html = visitUrl(toUrl($location`Exposure Esplanade`)) + runTurn();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      for (const match of html.match(/knock an icicle loose from the ceiling/g) ?? []) {
+        print("Hobo cried out and knocked an icicle loose.");
+      }
 
       if (!lastWasCombat()) {
         if (lastChoice() === 202) {

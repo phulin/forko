@@ -132,7 +132,7 @@ function getParts(part: MonsterPart, desiredParts: number, stopTurncount: number
     const manager = new AdventuringManager(
       $location`Hobopolis Town Square`,
       PrimaryGoal.NONE,
-      ["familiar weight", "-0.05 ml 0 min"],
+      ["spell damage percent", "-equip mushroom cap", "-equip mushroom badge"],
       usualDropItems
     );
     manager.preAdventure();

@@ -449,7 +449,7 @@ export class AdventuringManager {
     if (myFamiliar() === $familiar`Stocking Mimic`) {
       return [...this.forceEquip, $item`bag of many confections`];
     } else {
-      return this.forceEquip;
+      return [...this.forceEquip, $item`Li'l Businessman Kit`];
     }
   }
 
