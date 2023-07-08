@@ -21,8 +21,8 @@ import {
   spleenLimit,
   toEffect,
   use,
-  userConfirm,
   useSkill,
+  userConfirm,
 } from "kolmafia";
 import { $class, $effect, $effects, $item, $items, $skill, $skills, get, have } from "libram";
 import { clamp, getItem } from "./lib";

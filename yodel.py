@@ -61,15 +61,11 @@ def process(filename):
             pass
         elif encounter == 'Bumpity Bump Bump':
             print_image('done', 500)
-            break
         elif not 'cleesh' in consolidated.lower() and not 'sausage goblin' in consolidated.lower(): # hobo
             if 'wins the fight' in consolidated.lower():
                 print_image('hobo', image)
             for _ in range(consolidated.count("cried out and knocked an icicle")):
                 print("cries out")
-            if not "cried out and knocked an icicle" in consolidated:
-                for _ in re.findall(r'You lose (2[5-9][0-9]|[34][0-9][0-9]) hit points', consolidated):
-                    print("cries out")
 
 print('Processing', sys.argv[1:])
 

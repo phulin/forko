@@ -10,7 +10,7 @@ import {
 } from "kolmafia";
 import { $familiar, $location, $monster, $skill } from "libram";
 import { AdventuringManager, PrimaryGoal, usualDropItems } from "./adventure";
-import { adventureMacroAuto, adventureRunOrStasis, Macro } from "./combat";
+import { Macro, adventureMacroAuto, adventureRunOrStasis } from "./combat";
 import {
   clamp,
   extractInt,

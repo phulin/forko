@@ -1,15 +1,15 @@
 import {
+  Location,
+  Monster,
   adv1,
   canAdventure,
   choiceFollowsFight,
   currentRound,
   getAutoAttack,
   handlingChoice,
-  inebrietyLimit,
   inMultiFight,
+  inebrietyLimit,
   lastChoice,
-  Location,
-  Monster,
   myFamiliar,
   myInebriety,
   myLevel,
@@ -24,7 +24,7 @@ import {
   visitUrl,
   writeCcs,
 } from "kolmafia";
-import { $effect, $familiar, $item, $skill, get, have, Macro as LibramMacro } from "libram";
+import { $effect, $familiar, $item, $skill, Macro as LibramMacro, get, have } from "libram";
 import { turboMode } from "./lib";
 
 export function canStasis(): boolean {

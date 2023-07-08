@@ -1,18 +1,18 @@
 import {
+  Familiar,
+  Item,
+  Location,
   abort,
   availableAmount,
   buy,
   cliExecute,
   closetAmount,
   eat,
-  Familiar,
   familiarWeight,
   formatDateTime,
   getProperty,
   haveEffect,
-  Item,
   itemAmount,
-  Location,
   logprint,
   mallPrice,
   myAdventures,
@@ -47,8 +47,8 @@ import {
   $location,
   $skill,
   $thrall,
-  get,
   SourceTerminal,
+  get,
 } from "libram";
 import { throughSewers } from "./sewers";
 
@@ -294,7 +294,7 @@ export function wrapMain(args = "", action: () => void) {
       cliExecute("terminal educate digitize; terminal educate extract");
     }
     if (get("boomBoxSong") !== "Food Vibrations") cliExecute("boombox food");
-    setProperty("hpAutoRecovery", turbo ? "0.5" : "0.8");
+    setProperty("hpAutoRecovery", turbo ? "0.5" : "0.9");
     setProperty("hpAutoRecoveryTarget", "0.95");
     action();
     print("Done mining.");

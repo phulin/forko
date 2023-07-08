@@ -1,8 +1,8 @@
 import {
+  Effect,
   abort,
   ceil,
   cliExecute,
-  Effect,
   haveEffect,
   inebrietyLimit,
   myBuffedstat,
@@ -15,7 +15,7 @@ import {
 } from "kolmafia";
 import { $effect, $item, $location, $skill, $stat } from "libram";
 import { AdventuringManager, PrimaryGoal, usualDropItems } from "./adventure";
-import { adventureMacro, Macro } from "./combat";
+import { Macro, adventureMacro } from "./combat";
 import {
   extractInt,
   getImage,
@@ -28,7 +28,7 @@ import {
 } from "./lib";
 import { ensureEffect, expectedTurns, moodBaseline } from "./mood";
 
-const DESIRED_HOBOS = 500;
+const DESIRED_HOBOS = 1250;
 
 enum PartType {
   HOT,
@@ -219,7 +219,7 @@ export function doTownsquare(stopTurncount: number) {
     if (hobosRemaining > 0) {
       print(`Remaining after: ${hobosRemaining}`);
       for (const partPlan of plan) {
-        partPlan.count += ceil((hobosRemaining * 3) / 7 / 6);
+        partPlan.count += Math.ceil((hobosRemaining * 3) / 7 / 6);
       }
     }
 

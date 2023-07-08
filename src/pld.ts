@@ -1,7 +1,7 @@
 import { lastChoice, print, setAutoAttack, visitUrl } from "kolmafia";
 import { $location } from "libram";
 import { AdventuringManager, PrimaryGoal, usualDropItems } from "./adventure";
-import { adventureMacroAuto, adventureRunOrStasis, Macro } from "./combat";
+import { Macro, adventureMacroAuto, adventureRunOrStasis } from "./combat";
 import { getState as getEeState } from "./ee";
 import {
   extractInt,
@@ -17,13 +17,13 @@ import { expectedTurns, moodPlusCombat } from "./mood";
 
 const FREE_RUN_PLD = true;
 
-class PLDState {
+export class PLDState {
   fights = 0;
   flimflams = 0;
   kills = 0;
 }
 
-function getPldState() {
+export function getPldState() {
   const result = new PLDState();
   const logText = visitUrl("clan_raidlogs.php");
   result.fights = extractInt(/started (a|[0-9]+) barfight/g, logText);

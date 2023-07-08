@@ -11,7 +11,7 @@ import {
 } from "kolmafia";
 import { $location } from "libram";
 import { AdventuringManager, PrimaryGoal, usualDropItems } from "./adventure";
-import { adventureMacroAuto, Macro } from "./combat";
+import { Macro, adventureMacroAuto } from "./combat";
 import {
   clamp,
   extractInt,
